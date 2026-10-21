@@ -58,7 +58,7 @@ export const StepNavigator: React.FC<StepNavigatorProps> = ({
         </div>
 
         {/* Clickable Step Pills */}
-        <div className="grid grid-cols-10 gap-1.5 sm:gap-2">
+        <div className="grid grid-cols-8 gap-1.5 sm:gap-2">
           {P1_STEPS.map((s) => {
             const isCurrent = s.step === currentStep;
             const isCompleted = s.step < currentStep;

@@ -351,107 +351,87 @@ export function getStandardCasesP1(p: number): ProofCaseCFL[] {
 }
 
 /**
- * Step descriptions for the Problem 1 presentation flow (10 steps)
+ * Step descriptions for Problem 1 interactive proof (8 canonical steps)
  */
 export const P1_STEPS = [
   {
     step: 1,
-    title: 'Assumption: Proof by Contradiction',
-    tag: 'Formal Setup',
-    latex: '\\text{Assume for contradiction that } L = \\{a^n b^n a^n \\mid n \\ge 1\\} \\text{ is context-free.}',
+    title: 'Step 1: Language Definition & Three-Block Structure',
+    tag: 'Language Structure',
+    latex: 'L = \\{ a^n b^n a^n \\mid n \\ge 1 \\}',
     summary:
-      'We begin the indirect proof by contradiction. If L were a Context-Free Language (CFL), it would satisfy the CFL Pumping Lemma.',
+      "Language definition: L consists of strings with an equal positive number of a's, b's, and a's in three consecutive blocks. For n = 1: 'aba'; n = 2: 'aabbaa'; n = 3: 'aaabbbaaa'. Every string requires exactly three consecutive homogeneous blocks with strictly identical symbol counts.",
     speakerNotes:
-      'Begin your presentation by emphasizing that the Pumping Lemma is a necessary property of context-free languages. To prove a language is not context-free, we assume it is context-free and derive a contradiction.',
+      "Start by explaining the three consecutive blocks: first a^n, then b^n, then a^n. Note that ordinary pushdown automata have only one stack, making it impossible to check two independent balance comparisons (a's with b's, and b's with second a's) simultaneously.",
   },
   {
     step: 2,
-    title: 'Introduce Pumping Length p',
-    tag: 'Pumping Constant',
-    latex: '\\exists p \\ge 1 \\text{ such that any } s \\in L \\text{ with } |s| \\ge p \\text{ satisfies the lemma.}',
+    title: 'Step 2: Assume Context-Free & Introduce Pumping Length p',
+    tag: 'Proof by Contradiction',
+    latex: '\\text{Assume } L \\in \\text{CFL} \\implies \\exists p \\ge 1 \\text{ (pumping length)}',
     summary:
-      'By the CFL Pumping Lemma, there exists a constant integer p ≥ 1 (the pumping length, tied to Chomsky Normal Form parse tree height) guaranteed for L.',
+      'We assume for the sake of contradiction that L is context-free. According to the Pumping Lemma for Context-Free Languages, there exists a pumping length constant p ≥ 1 (tied to Chomsky Normal Form parse tree heights) guaranteed for L.',
     speakerNotes:
-      'Explain that we do not know the exact value of p, but the lemma asserts that such a constant p exists. The proof works for ANY arbitrary positive integer p.',
+      'Emphasize that the proof proceeds by contradiction. We do not know the exact value of p, but the lemma guarantees that such a constant p exists. The argument must hold for ANY arbitrary positive integer p.',
   },
   {
     step: 3,
-    title: 'Select String s = aᵖ bᵖ aᵖ',
-    tag: 'String Choice',
+    title: 'Step 3: Select String s = aᵖ bᵖ aᵖ',
+    tag: 'Strategic String Choice',
     latex: 's = a^p b^p a^p \\in L, \\quad |s| = 3p \\ge p',
     summary:
-      'We strategically choose the string s = aᵖbᵖaᵖ. Since n = p ≥ 1, s clearly belongs to L, and its length |s| = 3p is strictly greater than p.',
+      'In the quantifier game, we strategically choose the string s = aᵖbᵖaᵖ. Since n = p ≥ 1, s clearly belongs to L, and its total length |s| = 3p is strictly greater than or equal to p.',
     speakerNotes:
-      'Highlight to your audience: in the quantifier game, the opponent gave us p, but WE have the freedom to pick any valid string s in L of length ≥ p. Choosing s = aᵖbᵖaᵖ isolates each block with length p.',
+      'Highlight to your audience: in the quantifier game, the opponent gave us p, but WE have the choice of s. Choosing s = aᵖbᵖaᵖ ensures each block has length p, creating a vital buffer of size p between the first and third blocks.',
   },
   {
     step: 4,
-    title: 'CFL Decomposition: s = uvwxy',
-    tag: 'Decomposition Rule',
-    latex: 's = uvwxy \\quad \\text{such that} \\quad |vwx| \\le p, \\quad |vx| > 0, \\quad \\forall i \\ge 0: u v^i w x^i y \\in L',
+    title: 'Step 4: Introduce Decomposition s = uvwxy & Conditions',
+    tag: 'Lemma Conditions',
+    latex: 's = uvwxy \\quad \\text{s.t.} \\quad |vwx| \\le p, \\quad |vx| > 0, \\quad \\forall i \\ge 0: u v^i w x^i y \\in L',
     summary:
-      'The CFL Pumping Lemma states that s must be decomposable into five substrings uvwxy subject to: (1) |vwx| ≤ p, (2) |vx| > 0, and (3) for all i ≥ 0, uvⁱwxⁱy ∈ L.',
+      'The CFL Pumping Lemma asserts that s can be decomposed into five substrings s = uvwxy satisfying three fundamental conditions: (1) |vwx| ≤ p (bounded pumping window), (2) |vx| > 0 (at least one of v or x is non-empty), and (3) for every integer i ≥ 0, uvⁱwxⁱy must belong to L.',
     speakerNotes:
-      'Note the two essential restrictions: |vwx| ≤ p bounds the window size, and |vx| > 0 guarantees that we are not pumping the empty string.',
+      'Point out the two critical constraints: |vwx| ≤ p restricts the maximum window span, and |vx| > 0 ensures we are pumping actual characters rather than the empty string.',
   },
   {
     step: 5,
-    title: 'Display String in Three Distinct Blocks',
-    tag: 'String Visualization',
+    title: 'Step 5: Visualize 3 Blocks & Explore Valid Decompositions',
+    tag: 'Visual String Slices',
     latex: 's = \\underbrace{a \\dots a}_{\\text{Block 1: } a^p} \\; \\underbrace{b \\dots b}_{\\text{Block 2: } b^p} \\; \\underbrace{a \\dots a}_{\\text{Block 3: } a^p}',
     summary:
-      'The string s is partitioned into three visually distinct blocks of size p each: first aᵖ, middle bᵖ, and second aᵖ.',
+      "Visualize the three blocks of the selected string with distinct colors (Block 1 in Cyan, Block 2 in Purple, Block 3 in Indigo). Explore valid decompositions and inspect u, v, w, x, y along with their lengths and character slice positions [start, end).",
     speakerNotes:
-      'Point to the screen showing the three colored blocks. Notice that between Block 1 and Block 3 lies the entire middle block of p b\'s.',
+      'Demonstrate the interactive token bars. Show how adjusting the sliders dynamically reveals the exact substring lengths and slice boundaries, confirming conditions |vwx| ≤ p and |vx| > 0 in real time.',
   },
   {
     step: 6,
-    title: 'Interactive Decomposition Explorer',
-    tag: 'Interactive Exploration',
-    latex: 's = u \\cdot v \\cdot w \\cdot x \\cdot y',
+    title: 'Step 6: Pumping Controls for i = 0, 1, and 2',
+    tag: 'Animated Pumping Controls',
+    latex: 's_0 = u w y \\quad (i=0) \\qquad s_2 = u v^2 w x^2 y \\quad (i=2)',
     summary:
-      'Explore possible partitions of s into u, v, w, x, and y. Observe the color-coded tokens and verify that |vwx| ≤ p and |vx| > 0.',
+      'Add pumping controls for i = 0, 1, and 2. Animate the deletion of v and x when i = 0 (pumping down), or the duplication of v and x when i = 2 (pumping up). The resulting string is displayed and evaluated live against the language definition.',
     speakerNotes:
-      'Invite questions or demonstrate by moving the sliders: show that any chosen partition must strictly obey |vwx| ≤ p and |vx| > 0.',
+      'Click i = 0 to watch v and x vanish, or i = 2 to see them duplicate. Point to the live membership card showing why the pumped string immediately violates the equal block count or ordering.',
   },
   {
     step: 7,
-    title: 'The Window Constraint: |vwx| ≤ p',
-    tag: 'Crucial Geometric Insight',
-    latex: '|vwx| \\le p \\implies vwx \\text{ cannot touch both Block 1 and Block 3.}',
+    title: 'Step 7: The Proof: Why All Decompositions Fail (|vwx| ≤ p)',
+    tag: 'Rigorous Case Analysis',
+    latex: '|vwx| \\le p \\implies vwx \\text{ cannot cover both Block 1 and Block 3}',
     summary:
-      'Because |vwx| ≤ p, the window vwx has a maximum span of p. Since the entire middle block bᵖ has length p, any substring touching both Block 1 and Block 3 would require length ≥ p + 2 > p! Thus, vwx can only reside in 1 block or overlap 2 adjacent blocks.',
+      "Because |vwx| ≤ p, vwx cannot cover both the first and third blocks of aᵖbᵖaᵖ, as the intervening middle block bᵖ alone has length p (spanning both blocks of a's would require |vwx| ≥ p + 2 > p). Since |vx| > 0, pumping changes at least one of the block counts, while at least one block remains fixed at p symbols. Hence, the pumped string cannot preserve the required equal three-block structure in all 5 exhaustive cases.",
     speakerNotes:
-      'This is the geometric heart of the proof. The buffer of p b\'s prevents vwx from ever touching both blocks of a\'s simultaneously. Therefore, vwx can never balance all three blocks.',
+      "This is the heart of the mathematical proof. Because vwx can touch at most two adjacent blocks, pumping with i = 0 or i = 2 leaves whichever block was untouched with p symbols, breaking equality. Test each of the 5 cases on screen.",
   },
   {
     step: 8,
-    title: 'Demonstrate Pumping: i = 0 and i = 2',
-    tag: 'Animated Pumping',
-    latex: 's_0 = u w y \\quad (i=0) \\qquad s_2 = u v^2 w x^2 y \\quad (i=2)',
-    summary:
-      'Watch what happens when we pump: for i = 0 (pumping down), v and x vanish. For i = 2 (pumping up), v and x are duplicated. Compare the resulting string with L.',
-    speakerNotes:
-      'Show the visual animation: watch the green (v) and red (x) segments vanish when i=0, or clone themselves when i=2. Explain why i=0 and i=2 are the standard test values in textbook proofs.',
-  },
-  {
-    step: 9,
-    title: 'Why Membership Fails: Unequal Counts or Malformed Order',
-    tag: 'Failure Analysis',
-    latex: 's_i \\notin L \\quad \\text{because } N_a^{(1)} \\ne N_b \\text{ or } N_b \\ne N_a^{(2)} \\text{ or symbols out of order.}',
-    summary:
-      'In all 5 possible cases, pumping with i = 0 or i = 2 changes the count of at most two blocks, leaving at least one block unchanged at p symbols. This destroys the required equality aⁿbⁿaⁿ, or causes interleaving like abab...',
-    speakerNotes:
-      'Explain that because vwx cannot touch all three blocks, pumping is inherently unbalanced: whichever block is left untouched remains with p symbols, but the other blocks change count!',
-  },
-  {
-    step: 10,
-    title: 'Exhaustive Contradiction: L is Not Context-Free',
+    title: 'Step 8: Contradiction & Conclusion: L is Not Context-Free',
     tag: 'Final Proof & Conclusion',
-    latex: '\\text{Contradiction: No valid decomposition exists. } \\therefore L = \\{a^n b^n a^n \\mid n \\ge 1\\} \\notin \\text{CFL}.',
+    latex: '\\text{Contradiction!} \\quad \\forall \\text{ valid } uvwxy, \\exists i \\ge 0: u v^i w x^i y \\notin L \\implies L \\notin \\text{CFL} \\quad \\blacksquare',
     summary:
-      'Since EVERY decomposition satisfying the pumping lemma conditions fails for some i ≥ 0, the pumping lemma does not hold for L. The initial assumption that L is context-free must be false. Hence, L is not context-free. Q.E.D.',
+      'Since EVERY valid decomposition satisfying the pumping lemma conditions fails for some i ≥ 0, the pumping lemma does not hold for L. The initial assumption that L is context-free is false. Therefore, L = { aⁿ bⁿ aⁿ | n ≥ 1 } is not context-free. Q.E.D.',
     speakerNotes:
-      'Deliver your concluding remarks: We did not just test one decomposition—we exhaustively proved that ALL possible decompositions fail. Thus, L is definitively not a context-free language.',
+      'Deliver the final conclusion: We have mathematically proved that no context-free grammar or pushdown automaton can recognize L. The language is strictly context-sensitive.',
   },
 ];

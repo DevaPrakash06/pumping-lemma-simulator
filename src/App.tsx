@@ -8,7 +8,9 @@ import { CaseExplorer } from './components/CaseExplorer';
 import { QuantifierMatrix } from './components/QuantifierMatrix';
 import { ProofSummaryModal } from './components/ProofSummaryModal';
 import { TheoryGuideModal } from './components/TheoryGuideModal';
+import { Problem1Presentation } from './components/Problem1Presentation';
 import { Problem2Tab } from './components/Problem2Tab';
+import { Presentation } from 'lucide-react';
 import {
   buildStringP1,
   sliceDecomposition,
@@ -24,6 +26,9 @@ export const App: React.FC = () => {
   // Modals
   const [isProofModalOpen, setIsProofModalOpen] = useState(false);
   const [isTheoryModalOpen, setIsTheoryModalOpen] = useState(false);
+
+  // Problem 1 Presentation View Mode Toggle
+  const [isPresentationViewP1, setIsPresentationViewP1] = useState(false);
 
   // Problem 1 State
   const [currentStep, setCurrentStep] = useState(1);
@@ -128,50 +133,130 @@ export const App: React.FC = () => {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
         {/* Problem 1: CFL Pumping Lemma for a^n b^n a^n */}
         <div className={`space-y-6 ${activeTab === 'problem1' ? 'block' : 'hidden'}`}>
-          {/* Step Progression Card */}
-          <StepNavigator
-            currentStep={currentStep}
-            onStepChange={setCurrentStep}
-            isPlaying={isPlaying}
-            onTogglePlay={() => setIsPlaying(!isPlaying)}
-            onReset={handleReset}
-          />
+          {/* Problem 1 Header & Mode Switcher Card */}
+          <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-6 shadow-xl backdrop-blur-md relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-          {/* Core Visualization & Decomposition Section */}
-          <div className="grid grid-cols-1 gap-6">
-            {/* String 3-Block Visualizer */}
-            <BlockVisualizer p={p} onPChange={setP} decomp={decomp} />
+            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2.5">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono">
+                    PROBLEM 1 • PUMPING LEMMA
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30">
+                    Non-CFL Contradiction
+                  </span>
+                </div>
 
-            {/* Decomposition Bar & Token Length Sliders */}
-            <DecompositionBar
+                <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                  Prove that{' '}
+                  <span className="text-indigo-300 font-mono">
+                    L = &#123; aⁿ bⁿ aⁿ | n ≥ 1 &#125;
+                  </span>{' '}
+                  is not Context-Free
+                </h2>
+
+                <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
+                  Interactive step-by-step proof using the CFL Pumping Lemma. Demonstrate why any decomposition{' '}
+                  <code className="text-cyan-300 font-mono font-bold">s = uvwxy</code> with{' '}
+                  <code className="text-amber-300 font-mono font-bold">|vwx| ≤ p</code> and{' '}
+                  <code className="text-emerald-300 font-mono font-bold">|vx| &gt; 0</code> fails to preserve the required three equal blocks.
+                </p>
+              </div>
+
+              {/* Mode Switcher */}
+              <div className="flex items-center space-x-2 shrink-0 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                <button
+                  onClick={() => setIsPresentationViewP1(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    !isPresentationViewP1
+                      ? 'bg-indigo-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Interactive Studio
+                </button>
+                <button
+                  onClick={() => setIsPresentationViewP1(true)}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    isPresentationViewP1
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Presentation className="w-3.5 h-3.5" />
+                  <span>Presentation Mode</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {!isPresentationViewP1 ? (
+            <div className="space-y-6">
+              {/* Step Progression Card */}
+              <StepNavigator
+                currentStep={currentStep}
+                onStepChange={setCurrentStep}
+                isPlaying={isPlaying}
+                onTogglePlay={() => setIsPlaying(!isPlaying)}
+                onReset={handleReset}
+              />
+
+              {/* Core Visualization & Decomposition Section */}
+              <div className="grid grid-cols-1 gap-6">
+                {/* String 3-Block Visualizer */}
+                <BlockVisualizer p={p} onPChange={setP} decomp={decomp} />
+
+                {/* Decomposition Bar & Token Length Sliders */}
+                <DecompositionBar
+                  p={p}
+                  decomp={decomp}
+                  onDecompChange={handleDecompChange}
+                  selectedCaseId={selectedCaseId}
+                  onSelectCase={handleSelectCase}
+                />
+
+                {/* Animated Pumping & Language Membership Verifier */}
+                <PumpingAnimator
+                  p={p}
+                  decomp={decomp}
+                  i={i}
+                  onIChange={setI}
+                />
+              </div>
+
+              {/* General Proof Sections: All 5 Cases & Quantifier Game */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 5 Exhaustive Structural Cases */}
+                <CaseExplorer
+                  p={p}
+                  selectedCaseId={selectedCaseId}
+                  onSelectCase={handleSelectCase}
+                />
+
+                {/* Quantifier Matrix / Adversary Game Theory */}
+                <QuantifierMatrix />
+              </div>
+            </div>
+          ) : (
+            /* Problem 1 Focused Step-by-Step Presentation Mode */
+            <Problem1Presentation
+              currentStep={currentStep}
+              onStepChange={setCurrentStep}
+              isPlaying={isPlaying}
+              onTogglePlay={() => setIsPlaying(!isPlaying)}
+              onReset={handleReset}
+              onExitPresentation={() => setIsPresentationViewP1(false)}
               p={p}
+              onPChange={setP}
+              i={i}
+              onIChange={setI}
               decomp={decomp}
               onDecompChange={handleDecompChange}
               selectedCaseId={selectedCaseId}
               onSelectCase={handleSelectCase}
             />
-
-            {/* Animated Pumping & Language Membership Verifier */}
-            <PumpingAnimator
-              p={p}
-              decomp={decomp}
-              i={i}
-              onIChange={setI}
-            />
-          </div>
-
-          {/* General Proof Sections: All 5 Cases & Quantifier Game */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 5 Exhaustive Structural Cases */}
-            <CaseExplorer
-              p={p}
-              selectedCaseId={selectedCaseId}
-              onSelectCase={handleSelectCase}
-            />
-
-            {/* Quantifier Matrix / Adversary Game Theory */}
-            <QuantifierMatrix />
-          </div>
+          )}
         </div>
 
         {/* Problem 2: Pushdown Automaton for 0^n 1^(3n) */}

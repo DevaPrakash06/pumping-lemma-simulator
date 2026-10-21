@@ -33,6 +33,18 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
 
   const standardCases = getStandardCasesP1(p);
 
+  // Character slice positions [start, end) on s
+  const uStart = 0;
+  const uEnd = decomp.uLen;
+  const vStart = uEnd;
+  const vEnd = vStart + decomp.vLen;
+  const wStart = vEnd;
+  const wEnd = wStart + decomp.wLen;
+  const xStart = wEnd;
+  const xEnd = xStart + decomp.xLen;
+  const yStart = xEnd;
+  const yEnd = yStart + decomp.yLen;
+
   // Helper to safely update a component length while preserving total = 3p
   const handleLengthChange = (key: 'u' | 'v' | 'w' | 'x' | 'y', newLen: number) => {
     let u = decomp.uLen;
@@ -193,8 +205,12 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-sky-400 mb-1">
             <span>u (prefix)</span>
             <span className="font-mono bg-sky-950 px-1.5 rounded border border-sky-800/50">
-              {decomp.uLen}
+              |u|={decomp.uLen}
             </span>
+          </div>
+          <div className="text-[10px] font-mono text-slate-400 mb-1.5 flex justify-between">
+            <span>Pos: [{uStart}, {uEnd})</span>
+            <span className="truncate max-w-[65px]">"{decomp.u || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
             <button
@@ -225,8 +241,12 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-400 mb-1">
             <span>v (pumped)</span>
             <span className="font-mono bg-emerald-950 px-1.5 rounded border border-emerald-800/50">
-              {decomp.vLen}
+              |v|={decomp.vLen}
             </span>
+          </div>
+          <div className="text-[10px] font-mono text-emerald-400 mb-1.5 flex justify-between">
+            <span>Pos: [{vStart}, {vEnd})</span>
+            <span className="truncate max-w-[65px]">"{decomp.v || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
             <button
@@ -257,8 +277,12 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-amber-400 mb-1">
             <span>w (middle)</span>
             <span className="font-mono bg-amber-950 px-1.5 rounded border border-amber-800/50">
-              {decomp.wLen}
+              |w|={decomp.wLen}
             </span>
+          </div>
+          <div className="text-[10px] font-mono text-slate-400 mb-1.5 flex justify-between">
+            <span>Pos: [{wStart}, {wEnd})</span>
+            <span className="truncate max-w-[65px]">"{decomp.w || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
             <button
@@ -289,8 +313,12 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-rose-400 mb-1">
             <span>x (pumped)</span>
             <span className="font-mono bg-rose-950 px-1.5 rounded border border-rose-800/50">
-              {decomp.xLen}
+              |x|={decomp.xLen}
             </span>
+          </div>
+          <div className="text-[10px] font-mono text-rose-400 mb-1.5 flex justify-between">
+            <span>Pos: [{xStart}, {xEnd})</span>
+            <span className="truncate max-w-[65px]">"{decomp.x || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
             <button
@@ -321,8 +349,12 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           <div className="flex items-center justify-between text-xs font-semibold text-purple-400 mb-1">
             <span>y (suffix)</span>
             <span className="font-mono bg-purple-950 px-1.5 rounded border border-purple-800/50">
-              {decomp.yLen}
+              |y|={decomp.yLen}
             </span>
+          </div>
+          <div className="text-[10px] font-mono text-slate-400 mb-1.5 flex justify-between">
+            <span>Pos: [{yStart}, {yEnd})</span>
+            <span className="truncate max-w-[65px]">"{decomp.y || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
             <button
@@ -346,6 +378,72 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
               +
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Substring Positions & Lengths Coordinates Table */}
+      <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs">
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-300 font-semibold">
+          <span>Decomposition Substring Details & Slice Positions:</span>
+          <span className="font-mono text-[11px] text-indigo-300">
+            s = u · v · w · x · y (Length: {total})
+          </span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left font-mono text-[11px]">
+            <thead className="text-slate-500 uppercase text-[9px] border-b border-slate-800">
+              <tr>
+                <th className="py-1 px-2">Substring</th>
+                <th className="py-1 px-2">Role</th>
+                <th className="py-1 px-2">Content Value</th>
+                <th className="py-1 px-2">Length</th>
+                <th className="py-1 px-2">String Position [Start, End)</th>
+                <th className="py-1 px-2">Pumping Behavior</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-900 text-slate-300">
+              <tr>
+                <td className="py-1.5 px-2 font-bold text-sky-400">u</td>
+                <td className="py-1.5 px-2 text-slate-400 font-sans">Prefix</td>
+                <td className="py-1.5 px-2 text-sky-300">"{decomp.u || 'ε'}"</td>
+                <td className="py-1.5 px-2">{decomp.uLen}</td>
+                <td className="py-1.5 px-2 text-slate-400">[{uStart}, {uEnd})</td>
+                <td className="py-1.5 px-2 text-slate-500 font-sans">Fixed (1x)</td>
+              </tr>
+              <tr className="bg-emerald-950/20">
+                <td className="py-1.5 px-2 font-bold text-emerald-400">v</td>
+                <td className="py-1.5 px-2 text-emerald-400 font-sans font-semibold">Pumped Part 1</td>
+                <td className="py-1.5 px-2 text-emerald-300 font-bold">"{decomp.v || 'ε'}"</td>
+                <td className="py-1.5 px-2 text-emerald-300 font-bold">{decomp.vLen}</td>
+                <td className="py-1.5 px-2 text-emerald-400">[{vStart}, {vEnd})</td>
+                <td className="py-1.5 px-2 text-emerald-300 font-sans font-bold">Multiplied by i (vⁱ)</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 px-2 font-bold text-amber-400">w</td>
+                <td className="py-1.5 px-2 text-slate-400 font-sans">Middle Buffer</td>
+                <td className="py-1.5 px-2 text-amber-300">"{decomp.w || 'ε'}"</td>
+                <td className="py-1.5 px-2">{decomp.wLen}</td>
+                <td className="py-1.5 px-2 text-slate-400">[{wStart}, {wEnd})</td>
+                <td className="py-1.5 px-2 text-slate-500 font-sans">Fixed (1x)</td>
+              </tr>
+              <tr className="bg-rose-950/20">
+                <td className="py-1.5 px-2 font-bold text-rose-400">x</td>
+                <td className="py-1.5 px-2 text-rose-400 font-sans font-semibold">Pumped Part 2</td>
+                <td className="py-1.5 px-2 text-rose-300 font-bold">"{decomp.x || 'ε'}"</td>
+                <td className="py-1.5 px-2 text-rose-300 font-bold">{decomp.xLen}</td>
+                <td className="py-1.5 px-2 text-rose-400">[{xStart}, {xEnd})</td>
+                <td className="py-1.5 px-2 text-rose-300 font-sans font-bold">Multiplied by i (xⁱ)</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 px-2 font-bold text-purple-400">y</td>
+                <td className="py-1.5 px-2 text-slate-400 font-sans">Suffix</td>
+                <td className="py-1.5 px-2 text-purple-300">"{decomp.y || 'ε'}"</td>
+                <td className="py-1.5 px-2">{decomp.yLen}</td>
+                <td className="py-1.5 px-2 text-slate-400">[{yStart}, {yEnd})</td>
+                <td className="py-1.5 px-2 text-slate-500 font-sans">Fixed (1x)</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
