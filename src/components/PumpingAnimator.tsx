@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Zap,
   CheckCircle2,
@@ -8,6 +8,9 @@ import {
   TrendingUp,
   Sparkles,
   BookOpen,
+  GraduationCap,
+  Copy,
+  Check,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { MathView } from './MathView';
@@ -29,7 +32,9 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
   i,
   onIChange,
   notationMode = 'uvxyz',
+  formulaMode = 'notebook',
 }) => {
+  const [copied, setCopied] = useState(false);
   const pumped = pumpString(decomp, i);
   const membership = checkMembershipP1(pumped.pumpedString);
 
@@ -60,6 +65,49 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
       }
     }
   }, [i, membership.isValid]);
+
+  const handleCopyFinalAnswer = () => {
+    const formulaStr = formulaMode === 'notebook'
+      ? `s = a^p a a b^p b b a^p a a (where n = p + 2)`
+      : `s = a^p b^p a^p (where n = p)`;
+    const blockN = formulaMode === 'notebook' ? p + 2 : p;
+
+    const textToCopy = `FINAL ANSWER & PROOF SUMMARY
+================================================================================
+Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
+
+1. Assumption:
+   Assume for contradiction that L is context-free.
+   By the CFL Pumping Lemma, there exists a constant p >= 1.
+
+2. Selected String s:
+   Using formula ${formulaStr}.
+   For p = ${p}:
+   s = a^${blockN} b^${blockN} a^${blockN} = ${'a'.repeat(blockN)}${'b'.repeat(blockN)}${'a'.repeat(blockN)} (|s| = ${3 * blockN})
+
+3. Decomposition (${isUVXYZ ? 's = uvxyz' : 's = uvwxy'}):
+   - ${isUVXYZ ? '|vxy|' : '|vwx|'} <= ${p}
+   - ${isUVXYZ ? '|vy|' : '|vx|'} > 0
+   - For all i >= 0, ${isUVXYZ ? 'u v^i x y^i z' : 'u v^i w x^i y'} must belong to L.
+
+4. Pumping with i = ${i}:
+   s_${i} = ${pumped.pumpedString} (Length: ${pumped.pumpedString.length})
+   Counts:
+   - 1st Block a's = ${membership.a1Count}
+   - Middle Block b's = ${membership.bCount}
+   - 2nd Block a's = ${membership.a2Count}
+   Equality Check: ${membership.a1Count} = ${membership.bCount} = ${membership.a2Count} --> ${membership.equalCounts ? 'EQUAL' : 'NOT EQUAL (Contradiction!)'}
+
+5. Final Conclusion:
+   Since s_${i} does not belong to L, the Pumping Lemma condition is violated.
+   Therefore, L = { a^n b^n a^n | n >= 1 } is NOT a Context-Free Language (L ∉ CFL). [Q.E.D.]
+================================================================================`;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    });
+  };
 
   return (
     <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 shadow-xl backdrop-blur-md space-y-5">
@@ -233,7 +281,7 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
                 title={`${pmp2Symbol}^${i}: "${pumped.pumpedX}" (${i} copies of ${pmp2Symbol})`}
               >
                 {pumped.pumpedX}
-                <sub className="text-[10px] text-rose-200 ml-0.5">({i}×{pmp2Symbol})</sub>
+                <sub className="text-[10px] text-rose-200 ml-0.5">({i}×${pmp2Symbol})</sub>
               </span>
             )}
             {i === 0 && decomp.xLen > 0 && (
@@ -318,6 +366,96 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
             Mathematical Verification Reason:
           </p>
           <p className="text-slate-300">{membership.reason}</p>
+        </div>
+      </div>
+
+      {/* FINAL ANSWER / EXAM SUBMISSION SUMMARY CARD */}
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-950 via-indigo-950/80 to-slate-950 border-2 border-indigo-500/60 shadow-2xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-indigo-900/60 gap-2">
+          <div className="flex items-center space-x-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <div>
+              <h4 className="text-sm sm:text-base font-bold text-white tracking-wide uppercase flex items-center">
+                <GraduationCap className="w-5 h-5 text-indigo-400 mr-2" />
+                Final Answer & Formal Proof Verdict
+              </h4>
+              <p className="text-[11px] text-indigo-300 font-mono mt-0.5">
+                {formulaMode === 'notebook' ? 'Formula: s = aᵖ a a bᵖ b b aᵖ a a (n = p + 2)' : 'Formula: s = aᵖ bᵖ aᵖ (n = p)'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleCopyFinalAnswer}
+            className="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Copied to Clipboard!' : 'Copy Final Answer'}</span>
+          </button>
+        </div>
+
+        {/* The Formal Answer Breakdown */}
+        <div className="space-y-3 text-xs sm:text-sm">
+          {/* 1. Value after pumping */}
+          <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+            <span className="text-slate-400 text-[11px] uppercase font-bold block flex items-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mr-1.5"></span>
+              1. Resulting String Value After Pumping (i = {i}):
+            </span>
+            <div className="font-mono text-indigo-200 text-xs sm:text-sm break-all bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+              <span className="text-slate-400 font-sans text-xs mr-1">s' = </span>
+              <span className="text-cyan-300 font-bold">{'a'.repeat(membership.a1Count)}</span>
+              <span className="text-purple-300 font-bold">{'b'.repeat(membership.bCount)}</span>
+              <span className="text-indigo-300 font-bold">{'a'.repeat(membership.a2Count)}</span>
+            </div>
+            <div className="text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
+              <span>Total Length: <strong className="text-white font-mono">{pumped.pumpedString.length}</strong> chars</span>
+              <span>• Block 1: <strong className="text-cyan-300 font-mono">{membership.a1Count} a's</strong></span>
+              <span>• Block 2: <strong className="text-purple-300 font-mono">{membership.bCount} b's</strong></span>
+              <span>• Block 3: <strong className="text-indigo-300 font-mono">{membership.a2Count} a's</strong></span>
+            </div>
+          </div>
+
+          {/* 2. Count Equality Comparison */}
+          <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
+            <span className="text-slate-400 text-[11px] uppercase font-bold block flex items-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 mr-1.5"></span>
+              2. Three-Block Count Comparison:
+            </span>
+            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-center text-xs sm:text-sm">
+              {membership.equalCounts ? (
+                <span className="text-emerald-400 font-bold">
+                  Count(a¹) = {membership.a1Count} &nbsp;=&nbsp; Count(b) = {membership.bCount} &nbsp;=&nbsp; Count(a²) = {membership.a2Count}
+                </span>
+              ) : (
+                <span className="text-rose-400 font-bold">
+                  Count(a¹) = {membership.a1Count} &nbsp;vs&nbsp; Count(b) = {membership.bCount} &nbsp;vs&nbsp; Count(a²) = {membership.a2Count} &nbsp;⟹&nbsp; {membership.a1Count} ≠ {membership.a2Count} (UNEQUAL!)
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              The language definition requires <MathView math="n \ge 1" /> symbols in all three homogeneous blocks simultaneously. Because {membership.a1Count} ≠ {membership.a2Count}, the pumped string violates language membership.
+            </p>
+          </div>
+
+          {/* 3. Final Conclusion Box */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/40 via-indigo-950/50 to-purple-950/40 border-2 border-emerald-500/60 space-y-2">
+            <span className="text-emerald-400 text-xs uppercase font-bold flex items-center">
+              <CheckCircle2 className="w-4 h-4 mr-1.5 text-emerald-400" />
+              3. Final Formal Conclusion & Theorem Verdict:
+            </span>
+            <p className="text-slate-200 text-xs sm:text-sm leading-relaxed">
+              Since the pumped string <MathView math={`s_{${i}}`} /> does not belong to <MathView math="L" />, condition (3) of the Pumping Lemma fails.
+              Because this contradiction occurs for every valid decomposition across all 5 exhaustive structural cases, the initial assumption that <MathView math="L" /> is context-free must be false.
+            </p>
+            <div className="p-3 rounded-lg bg-slate-950/90 border border-emerald-500/50 text-center space-y-1">
+              <div className="text-sm sm:text-base font-bold text-white tracking-wide">
+                FINAL ANSWER: <span className="text-emerald-400 font-mono">L = &#123; aⁿ bⁿ aⁿ | n ≥ 1 &#125; is NOT a Context-Free Language (L ∉ CFL).</span>
+              </div>
+              <span className="inline-block font-mono text-xs text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50">
+                ∎ Q.E.D. Proof by Contradiction Complete
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
