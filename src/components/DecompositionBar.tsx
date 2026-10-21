@@ -6,7 +6,7 @@ import {
   Split,
 } from 'lucide-react';
 import { MathView } from './MathView';
-import type { DecompositionCFL, ProofCaseCFL } from '../types/automata';
+import type { DecompositionCFL, FormulaMode, NotationMode, ProofCaseCFL } from '../types/automata';
 import { getStandardCasesP1 } from '../math/cflProblem1';
 
 interface DecompositionBarProps {
@@ -15,6 +15,8 @@ interface DecompositionBarProps {
   onDecompChange: (uLen: number, vLen: number, wLen: number, xLen: number, yLen: number) => void;
   selectedCaseId: string | null;
   onSelectCase: (c: ProofCaseCFL) => void;
+  formulaMode?: FormulaMode;
+  notationMode?: NotationMode;
 }
 
 export const DecompositionBar: React.FC<DecompositionBarProps> = ({
@@ -23,29 +25,40 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
   onDecompChange,
   selectedCaseId,
   onSelectCase,
+  formulaMode = 'notebook',
+  notationMode = 'uvxyz',
 }) => {
-  const total = 3 * p;
-  const vwxLen = decomp.vLen + decomp.wLen + decomp.xLen;
-  const vxLen = decomp.vLen + decomp.xLen;
+  const total = formulaMode === 'notebook' ? 3 * (p + 2) : 3 * p;
+  const windowLen = decomp.vLen + decomp.wLen + decomp.xLen;
+  const pumpedLen = decomp.vLen + decomp.xLen;
 
-  const vwxValid = vwxLen <= p;
-  const vxValid = vxLen > 0;
+  const windowValid = windowLen <= p;
+  const pumpedValid = pumpedLen > 0;
 
-  const standardCases = getStandardCasesP1(p);
+  const standardCases = getStandardCasesP1(p, formulaMode, notationMode);
 
   // Character slice positions [start, end) on s
   const uStart = 0;
   const uEnd = decomp.uLen;
   const vStart = uEnd;
   const vEnd = vStart + decomp.vLen;
-  const wStart = vEnd;
-  const wEnd = wStart + decomp.wLen;
-  const xStart = wEnd;
-  const xEnd = xStart + decomp.xLen;
-  const yStart = xEnd;
-  const yEnd = yStart + decomp.yLen;
+  const midStart = vEnd;
+  const midEnd = midStart + decomp.wLen;
+  const pmp2Start = midEnd;
+  const pmp2End = pmp2Start + decomp.xLen;
+  const suffStart = pmp2End;
+  const suffEnd = suffStart + decomp.yLen;
 
-  // Helper to safely update a component length while preserving total = 3p
+  // Labels based on notationMode
+  const isUVXYZ = notationMode === 'uvxyz';
+  const midSymbol = isUVXYZ ? 'x' : 'w';
+  const pmp2Symbol = isUVXYZ ? 'y' : 'x';
+  const suffSymbol = isUVXYZ ? 'z' : 'y';
+  const windowLabel = isUVXYZ ? '|vxy|' : '|vwx|';
+  const pumpedLabel = isUVXYZ ? '|vy|' : '|vx|';
+  const fullDecompFormula = isUVXYZ ? 's = uvxyz' : 's = uvwxy';
+
+  // Helper to safely update a component length while preserving total
   const handleLengthChange = (key: 'u' | 'v' | 'w' | 'x' | 'y', newLen: number) => {
     let u = decomp.uLen;
     let v = decomp.vLen;
@@ -57,7 +70,6 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
 
     if (key === 'u') {
       u = safeVal;
-      // adjust y to maintain total
       y = Math.max(0, total - (u + v + w + x));
     } else if (key === 'v') {
       v = safeVal;
@@ -82,10 +94,10 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
         <div>
           <h3 className="text-base font-bold text-white flex items-center">
             <Split className="w-4 h-4 text-indigo-400 mr-2" />
-            Decomposition Explorer: <code className="ml-1 text-indigo-300 font-mono">s = uvwxy</code>
+            Decomposition Explorer: <code className="ml-1 text-indigo-300 font-mono">{fullDecompFormula}</code>
           </h3>
           <p className="text-xs text-slate-400">
-            Deconstruct <MathView math="s" /> into 5 parts and test the pumping conditions.
+            Deconstruct <MathView math="s" /> into 5 parts and test the pumping conditions ({windowLabel} ≤ {p}, {pumpedLabel} &gt; 0).
           </p>
         </div>
 
@@ -118,14 +130,14 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
       {/* Visual Decomposition Segmented Bar */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-          <span>Visual String Slices</span>
+          <span>Visual String Slices ({fullDecompFormula})</span>
           <span className="font-mono text-[11px] text-slate-400">
             Total length: {decomp.uLen + decomp.vLen + decomp.wLen + decomp.xLen + decomp.yLen} / {total}
           </span>
         </div>
 
         <div className="h-10 rounded-xl overflow-hidden flex shadow-inner border border-slate-800 bg-slate-950 p-1 gap-1">
-          {/* u */}
+          {/* Part 1: u */}
           {decomp.uLen > 0 && (
             <div
               style={{ flex: decomp.uLen }}
@@ -136,7 +148,7 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
             </div>
           )}
 
-          {/* v */}
+          {/* Part 2: v (pumped 1) */}
           {decomp.vLen > 0 ? (
             <div
               style={{ flex: decomp.vLen }}
@@ -144,7 +156,7 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
             >
               <span className="truncate px-1">v = "{decomp.v}"</span>
               <span className="absolute bottom-0 right-1 text-[9px] font-sans font-bold text-emerald-200">
-                PUMP (x i)
+                PUMP (vⁱ)
               </span>
             </div>
           ) : (
@@ -153,54 +165,54 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
             </div>
           )}
 
-          {/* w */}
+          {/* Part 3: middle buffer (w in uvwxy, x in uvxyz) */}
           {decomp.wLen > 0 ? (
             <div
               style={{ flex: decomp.wLen }}
               className="bg-amber-500/20 border border-amber-400/60 rounded-lg flex items-center justify-center font-mono font-bold text-amber-300 text-xs transition-all relative group overflow-hidden"
             >
-              <span className="truncate px-1">w = "{decomp.w}"</span>
-              <span className="absolute bottom-0 right-1 text-[9px] opacity-70">|w|={decomp.wLen}</span>
+              <span className="truncate px-1">{midSymbol} = "{decomp.w}"</span>
+              <span className="absolute bottom-0 right-1 text-[9px] opacity-70">|{midSymbol}|={decomp.wLen}</span>
             </div>
           ) : (
             <div className="px-1.5 rounded bg-slate-800/40 border border-slate-700 text-[10px] text-slate-500 flex items-center">
-              w=ε
+              {midSymbol}=ε
             </div>
           )}
 
-          {/* x */}
+          {/* Part 4: pumped 2 (x in uvwxy, y in uvxyz) */}
           {decomp.xLen > 0 ? (
             <div
               style={{ flex: decomp.xLen }}
               className="bg-rose-500/30 border-2 border-rose-400 rounded-lg flex items-center justify-center font-mono font-bold text-rose-300 text-xs transition-all relative group overflow-hidden glow-active"
             >
-              <span className="truncate px-1">x = "{decomp.x}"</span>
+              <span className="truncate px-1">{pmp2Symbol} = "{decomp.x}"</span>
               <span className="absolute bottom-0 right-1 text-[9px] font-sans font-bold text-rose-200">
-                PUMP (x i)
+                PUMP ({pmp2Symbol}ⁱ)
               </span>
             </div>
           ) : (
             <div className="px-1.5 rounded bg-slate-800/40 border border-slate-700 text-[10px] text-slate-500 flex items-center">
-              x=ε
+              {pmp2Symbol}=ε
             </div>
           )}
 
-          {/* y */}
+          {/* Part 5: suffix (y in uvwxy, z in uvxyz) */}
           {decomp.yLen > 0 && (
             <div
               style={{ flex: decomp.yLen }}
               className="bg-purple-500/20 border border-purple-400/60 rounded-lg flex items-center justify-center font-mono font-bold text-purple-300 text-xs transition-all relative group overflow-hidden"
             >
-              <span className="truncate px-1">y = "{decomp.y}"</span>
-              <span className="absolute bottom-0 right-1 text-[9px] opacity-70">|y|={decomp.yLen}</span>
+              <span className="truncate px-1">{suffSymbol} = "{decomp.y}"</span>
+              <span className="absolute bottom-0 right-1 text-[9px] opacity-70">|{suffSymbol}|={decomp.yLen}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Length Controls for u, v, w, x, y */}
+      {/* Length Controls for 5 substrings */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 pt-1">
-        {/* u control */}
+        {/* Part 1: u control */}
         <div className="p-2.5 rounded-xl bg-slate-950/70 border border-sky-900/30">
           <div className="flex items-center justify-between text-xs font-semibold text-sky-400 mb-1">
             <span>u (prefix)</span>
@@ -236,10 +248,10 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           </div>
         </div>
 
-        {/* v control */}
+        {/* Part 2: v control */}
         <div className="p-2.5 rounded-xl bg-slate-950/70 border border-emerald-900/30">
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-400 mb-1">
-            <span>v (pumped)</span>
+            <span>v (pumped 1)</span>
             <span className="font-mono bg-emerald-950 px-1.5 rounded border border-emerald-800/50">
               |v|={decomp.vLen}
             </span>
@@ -272,16 +284,16 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           </div>
         </div>
 
-        {/* w control */}
+        {/* Part 3: middle buffer control (w in uvwxy, x in uvxyz) */}
         <div className="p-2.5 rounded-xl bg-slate-950/70 border border-amber-900/30">
           <div className="flex items-center justify-between text-xs font-semibold text-amber-400 mb-1">
-            <span>w (middle)</span>
+            <span>{midSymbol} (middle)</span>
             <span className="font-mono bg-amber-950 px-1.5 rounded border border-amber-800/50">
-              |w|={decomp.wLen}
+              |{midSymbol}|={decomp.wLen}
             </span>
           </div>
           <div className="text-[10px] font-mono text-slate-400 mb-1.5 flex justify-between">
-            <span>Pos: [{wStart}, {wEnd})</span>
+            <span>Pos: [{midStart}, {midEnd})</span>
             <span className="truncate max-w-[65px]">"{decomp.w || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
@@ -308,16 +320,16 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           </div>
         </div>
 
-        {/* x control */}
+        {/* Part 4: pumped 2 control (x in uvwxy, y in uvxyz) */}
         <div className="p-2.5 rounded-xl bg-slate-950/70 border border-rose-900/30">
           <div className="flex items-center justify-between text-xs font-semibold text-rose-400 mb-1">
-            <span>x (pumped)</span>
+            <span>{pmp2Symbol} (pumped 2)</span>
             <span className="font-mono bg-rose-950 px-1.5 rounded border border-rose-800/50">
-              |x|={decomp.xLen}
+              |{pmp2Symbol}|={decomp.xLen}
             </span>
           </div>
           <div className="text-[10px] font-mono text-rose-400 mb-1.5 flex justify-between">
-            <span>Pos: [{xStart}, {xEnd})</span>
+            <span>Pos: [{pmp2Start}, {pmp2End})</span>
             <span className="truncate max-w-[65px]">"{decomp.x || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
@@ -344,16 +356,16 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
           </div>
         </div>
 
-        {/* y control */}
+        {/* Part 5: suffix control (y in uvwxy, z in uvxyz) */}
         <div className="p-2.5 rounded-xl bg-slate-950/70 border border-purple-900/30 col-span-2 sm:col-span-1">
           <div className="flex items-center justify-between text-xs font-semibold text-purple-400 mb-1">
-            <span>y (suffix)</span>
+            <span>{suffSymbol} (suffix)</span>
             <span className="font-mono bg-purple-950 px-1.5 rounded border border-purple-800/50">
-              |y|={decomp.yLen}
+              |{suffSymbol}|={decomp.yLen}
             </span>
           </div>
           <div className="text-[10px] font-mono text-slate-400 mb-1.5 flex justify-between">
-            <span>Pos: [{yStart}, {yEnd})</span>
+            <span>Pos: [{suffStart}, {suffEnd})</span>
             <span className="truncate max-w-[65px]">"{decomp.y || 'ε'}"</span>
           </div>
           <div className="flex items-center space-x-1">
@@ -386,7 +398,7 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-slate-300 font-semibold">
           <span>Decomposition Substring Details & Slice Positions:</span>
           <span className="font-mono text-[11px] text-indigo-300">
-            s = u · v · w · x · y (Length: {total})
+            s = u · v · {midSymbol} · {pmp2Symbol} · {suffSymbol} (Length: {total})
           </span>
         </div>
         <div className="overflow-x-auto">
@@ -419,27 +431,27 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
                 <td className="py-1.5 px-2 text-emerald-300 font-sans font-bold">Multiplied by i (vⁱ)</td>
               </tr>
               <tr>
-                <td className="py-1.5 px-2 font-bold text-amber-400">w</td>
+                <td className="py-1.5 px-2 font-bold text-amber-400">{midSymbol}</td>
                 <td className="py-1.5 px-2 text-slate-400 font-sans">Middle Buffer</td>
                 <td className="py-1.5 px-2 text-amber-300">"{decomp.w || 'ε'}"</td>
                 <td className="py-1.5 px-2">{decomp.wLen}</td>
-                <td className="py-1.5 px-2 text-slate-400">[{wStart}, {wEnd})</td>
+                <td className="py-1.5 px-2 text-slate-400">[{midStart}, {midEnd})</td>
                 <td className="py-1.5 px-2 text-slate-500 font-sans">Fixed (1x)</td>
               </tr>
               <tr className="bg-rose-950/20">
-                <td className="py-1.5 px-2 font-bold text-rose-400">x</td>
+                <td className="py-1.5 px-2 font-bold text-rose-400">{pmp2Symbol}</td>
                 <td className="py-1.5 px-2 text-rose-400 font-sans font-semibold">Pumped Part 2</td>
                 <td className="py-1.5 px-2 text-rose-300 font-bold">"{decomp.x || 'ε'}"</td>
                 <td className="py-1.5 px-2 text-rose-300 font-bold">{decomp.xLen}</td>
-                <td className="py-1.5 px-2 text-rose-400">[{xStart}, {xEnd})</td>
-                <td className="py-1.5 px-2 text-rose-300 font-sans font-bold">Multiplied by i (xⁱ)</td>
+                <td className="py-1.5 px-2 text-rose-400">[{pmp2Start}, {pmp2End})</td>
+                <td className="py-1.5 px-2 text-rose-300 font-sans font-bold">Multiplied by i ({pmp2Symbol}ⁱ)</td>
               </tr>
               <tr>
-                <td className="py-1.5 px-2 font-bold text-purple-400">y</td>
+                <td className="py-1.5 px-2 font-bold text-purple-400">{suffSymbol}</td>
                 <td className="py-1.5 px-2 text-slate-400 font-sans">Suffix</td>
                 <td className="py-1.5 px-2 text-purple-300">"{decomp.y || 'ε'}"</td>
                 <td className="py-1.5 px-2">{decomp.yLen}</td>
-                <td className="py-1.5 px-2 text-slate-400">[{yStart}, {yEnd})</td>
+                <td className="py-1.5 px-2 text-slate-400">[{suffStart}, {suffEnd})</td>
                 <td className="py-1.5 px-2 text-slate-500 font-sans">Fixed (1x)</td>
               </tr>
             </tbody>
@@ -449,59 +461,59 @@ export const DecompositionBar: React.FC<DecompositionBarProps> = ({
 
       {/* Constraints Live Verification Badges */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-        {/* Condition 1: |vwx| <= p */}
+        {/* Condition 1: |window| <= p */}
         <div
           className={`p-3 rounded-xl border flex items-center justify-between ${
-            vwxValid
+            windowValid
               ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
               : 'bg-rose-950/30 border-rose-800/60 text-rose-300'
           }`}
         >
           <div className="flex items-center space-x-2">
-            {vwxValid ? (
+            {windowValid ? (
               <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
             ) : (
               <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
             )}
             <div>
               <span className="font-semibold text-xs block">
-                Condition 1: <MathView math="|vwx| \le p" />
+                Condition 1: <MathView math={`${windowLabel} \\le p`} />
               </span>
               <span className="text-[11px] opacity-80">
-                {vwxLen} ≤ {p} ({vwxValid ? 'Satisfied' : 'VIOLATION'})
+                {windowLen} ≤ {p} ({windowValid ? 'Satisfied (in notes: 5 ≤ 5)' : 'VIOLATION'})
               </span>
             </div>
           </div>
           <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900/80 border border-slate-700">
-            {vwxValid ? 'VALID' : 'INVALID'}
+            {windowValid ? 'VALID' : 'INVALID'}
           </span>
         </div>
 
-        {/* Condition 2: |vx| > 0 */}
+        {/* Condition 2: |pumped| > 0 */}
         <div
           className={`p-3 rounded-xl border flex items-center justify-between ${
-            vxValid
+            pumpedValid
               ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
               : 'bg-rose-950/30 border-rose-800/60 text-rose-300'
           }`}
         >
           <div className="flex items-center space-x-2">
-            {vxValid ? (
+            {pumpedValid ? (
               <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
             ) : (
               <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
             )}
             <div>
               <span className="font-semibold text-xs block">
-                Condition 2: <MathView math="|vx| > 0" />
+                Condition 2: <MathView math={`${pumpedLabel} > 0`} />
               </span>
               <span className="text-[11px] opacity-80">
-                |vx| = {vxLen} {vxValid ? '> 0 (Not empty)' : '= 0 (Empty! Cannot pump nothing)'}
+                {pumpedLabel} = {pumpedLen} {pumpedValid ? '> 0 (in notes: 4 > 0)' : '= 0 (Empty! Cannot pump nothing)'}
               </span>
             </div>
           </div>
           <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-900/80 border border-slate-700">
-            {vxValid ? 'VALID' : 'INVALID'}
+            {pumpedValid ? 'VALID' : 'INVALID'}
           </span>
         </div>
       </div>

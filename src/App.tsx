@@ -17,7 +17,7 @@ import {
   getStandardCasesP1,
   P1_STEPS,
 } from './math/cflProblem1';
-import type { ProofCaseCFL } from './types/automata';
+import type { FormulaMode, NotationMode, ProofCaseCFL } from './types/automata';
 
 export const App: React.FC = () => {
   // Navigation tabs
@@ -30,33 +30,35 @@ export const App: React.FC = () => {
   // Problem 1 Presentation View Mode Toggle
   const [isPresentationViewP1, setIsPresentationViewP1] = useState(false);
 
-  // Problem 1 State
+  // Problem 1 State (Notebook defaults from handwritten class notes: P = 5, i = 3, Case 2)
+  const [formulaMode, setFormulaMode] = useState<FormulaMode>('notebook');
+  const [notationMode, setNotationMode] = useState<NotationMode>('uvxyz');
   const [currentStep, setCurrentStep] = useState(1);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [p, setP] = useState(3);
-  const [i, setI] = useState(0); // Default to i=0 to show pumping down contradiction
-  const [selectedCaseId, setSelectedCaseId] = useState<string | null>('case1');
+  const [p, setP] = useState(5); // Default P = 5 from handwritten class notes Step 5
+  const [i, setI] = useState(3); // Default i = 3 from handwritten class notes Step 7
+  const [selectedCaseId, setSelectedCaseId] = useState<string | null>('case2'); // Default Case 2 (matches notes Step 6)
 
-  // Decomposition lengths
-  const [uLen, setULen] = useState(1);
-  const [vLen, setVLen] = useState(1);
-  const [wLen, setWLen] = useState(0);
-  const [xLen, setXLen] = useState(1);
-  const [yLen, setYLen] = useState(6);
+  // Decomposition lengths (default for P = 5, k = 7, Case 2: u=5, v=2, w=1, x=2, y=11)
+  const [uLen, setULen] = useState(5);
+  const [vLen, setVLen] = useState(2);
+  const [wLen, setWLen] = useState(1);
+  const [xLen, setXLen] = useState(2);
+  const [yLen, setYLen] = useState(11);
 
-  // Sync default decomposition when p changes or when selecting a case
+  // Sync decomposition when p, formulaMode, or notationMode changes
   useEffect(() => {
-    const cases = getStandardCasesP1(p);
-    const matched = cases.find((c) => c.id === selectedCaseId) || cases[0];
+    const cases = getStandardCasesP1(p, formulaMode, notationMode);
+    const matched = cases.find((c) => c.id === selectedCaseId) || cases[1] || cases[0];
     setULen(matched.sampleDecomp.uLen);
     setVLen(matched.sampleDecomp.vLen);
     setWLen(matched.sampleDecomp.wLen);
     setXLen(matched.sampleDecomp.xLen);
     setYLen(matched.sampleDecomp.yLen);
-  }, [p]);
+  }, [p, formulaMode, notationMode]);
 
   // Build string and slice
-  const { s } = buildStringP1(p);
+  const { s, formulaText, totalLength, blockSize } = buildStringP1(p, formulaMode);
   const decomp = sliceDecomposition(s, uLen, vLen, wLen, xLen, yLen);
 
   // Auto-play timer for presentation mode
@@ -87,19 +89,22 @@ export const App: React.FC = () => {
     setI(c.recommendedI); // set recommended i for contradiction demonstration
   };
 
-  // Reset Problem 1
+  // Reset Problem 1 to Class Notes defaults
   const handleReset = () => {
     setCurrentStep(1);
     setIsPlaying(false);
-    setP(3);
-    setI(0);
-    setSelectedCaseId('case1');
-    const cases = getStandardCasesP1(3);
-    setULen(cases[0].sampleDecomp.uLen);
-    setVLen(cases[0].sampleDecomp.vLen);
-    setWLen(cases[0].sampleDecomp.wLen);
-    setXLen(cases[0].sampleDecomp.xLen);
-    setYLen(cases[0].sampleDecomp.yLen);
+    setP(5);
+    setI(3);
+    setFormulaMode('notebook');
+    setNotationMode('uvxyz');
+    setSelectedCaseId('case2');
+    const cases = getStandardCasesP1(5, 'notebook', 'uvxyz');
+    const targetCase = cases[1] || cases[0];
+    setULen(targetCase.sampleDecomp.uLen);
+    setVLen(targetCase.sampleDecomp.vLen);
+    setWLen(targetCase.sampleDecomp.wLen);
+    setXLen(targetCase.sampleDecomp.xLen);
+    setYLen(targetCase.sampleDecomp.yLen);
   };
 
   // Handle manual decomposition slider changes
@@ -139,12 +144,15 @@ export const App: React.FC = () => {
 
             <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="space-y-2">
-                <div className="flex items-center space-x-2.5">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-mono">
                     PROBLEM 1 • PUMPING LEMMA
                   </span>
-                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-300 border border-rose-500/30">
-                    Non-CFL Contradiction
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                    Formula: {formulaText}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/40 font-mono">
+                    Notation: {notationMode === 'uvxyz' ? 's = uvxyz' : 's = uvwxy'}
                   </span>
                 </div>
 
@@ -157,10 +165,13 @@ export const App: React.FC = () => {
                 </h2>
 
                 <p className="text-sm text-slate-300 max-w-3xl leading-relaxed">
-                  Interactive step-by-step proof using the CFL Pumping Lemma. Demonstrate why any decomposition{' '}
-                  <code className="text-cyan-300 font-mono font-bold">s = uvwxy</code> with{' '}
-                  <code className="text-amber-300 font-mono font-bold">|vwx| ≤ p</code> and{' '}
-                  <code className="text-emerald-300 font-mono font-bold">|vx| &gt; 0</code> fails to preserve the required three equal blocks.
+                  Interactive step-by-step proof utilizing the class notes formula{' '}
+                  <code className="text-cyan-300 font-mono font-bold">s = aᵖ a a bᵖ b b aᵖ a a</code> (where block size{' '}
+                  <code className="text-emerald-300 font-mono font-bold">n = p + 2 = {blockSize}</code>, total length{' '}
+                  <code className="text-indigo-300 font-mono font-bold">|s| = {totalLength}</code>). Demonstrate why any decomposition{' '}
+                  <code className="text-amber-300 font-mono font-bold">{notationMode === 'uvxyz' ? 's = uvxyz' : 's = uvwxy'}</code> with{' '}
+                  <code className="text-rose-300 font-mono font-bold">{notationMode === 'uvxyz' ? '|vxy| ≤ p' : '|vwx| ≤ p'}</code> and{' '}
+                  <code className="text-purple-300 font-mono font-bold">{notationMode === 'uvxyz' ? '|vy| > 0' : '|vx| > 0'}</code> fails to preserve equal counts when pumped.
                 </p>
               </div>
 
@@ -205,7 +216,15 @@ export const App: React.FC = () => {
               {/* Core Visualization & Decomposition Section */}
               <div className="grid grid-cols-1 gap-6">
                 {/* String 3-Block Visualizer */}
-                <BlockVisualizer p={p} onPChange={setP} decomp={decomp} />
+                <BlockVisualizer
+                  p={p}
+                  onPChange={setP}
+                  decomp={decomp}
+                  formulaMode={formulaMode}
+                  onFormulaModeChange={setFormulaMode}
+                  notationMode={notationMode}
+                  onNotationModeChange={setNotationMode}
+                />
 
                 {/* Decomposition Bar & Token Length Sliders */}
                 <DecompositionBar
@@ -214,6 +233,8 @@ export const App: React.FC = () => {
                   onDecompChange={handleDecompChange}
                   selectedCaseId={selectedCaseId}
                   onSelectCase={handleSelectCase}
+                  formulaMode={formulaMode}
+                  notationMode={notationMode}
                 />
 
                 {/* Animated Pumping & Language Membership Verifier */}
@@ -222,6 +243,8 @@ export const App: React.FC = () => {
                   decomp={decomp}
                   i={i}
                   onIChange={setI}
+                  notationMode={notationMode}
+                  formulaMode={formulaMode}
                 />
               </div>
 
@@ -255,6 +278,10 @@ export const App: React.FC = () => {
               onDecompChange={handleDecompChange}
               selectedCaseId={selectedCaseId}
               onSelectCase={handleSelectCase}
+              formulaMode={formulaMode}
+              onFormulaModeChange={setFormulaMode}
+              notationMode={notationMode}
+              onNotationModeChange={setNotationMode}
             />
           )}
         </div>

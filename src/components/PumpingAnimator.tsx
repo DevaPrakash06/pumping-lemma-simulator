@@ -7,10 +7,11 @@ import {
   TrendingDown,
   TrendingUp,
   Sparkles,
+  BookOpen,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { MathView } from './MathView';
-import type { DecompositionCFL } from '../types/automata';
+import type { DecompositionCFL, FormulaMode, NotationMode } from '../types/automata';
 import { pumpString, checkMembershipP1 } from '../math/cflProblem1';
 
 interface PumpingAnimatorProps {
@@ -18,6 +19,8 @@ interface PumpingAnimatorProps {
   decomp: DecompositionCFL;
   i: number;
   onIChange: (newI: number) => void;
+  notationMode?: NotationMode;
+  formulaMode?: FormulaMode;
 }
 
 export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
@@ -25,14 +28,25 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
   decomp,
   i,
   onIChange,
+  notationMode = 'uvxyz',
 }) => {
   const pumped = pumpString(decomp, i);
   const membership = checkMembershipP1(pumped.pumpedString);
 
-  // Trigger brief celebration when contradiction is proven (i != 1 and membership is false)
+  // Notation labels
+  const isUVXYZ = notationMode === 'uvxyz';
+  const midSymbol = isUVXYZ ? 'x' : 'w';
+  const pmp2Symbol = isUVXYZ ? 'y' : 'x';
+  const suffSymbol = isUVXYZ ? 'z' : 'y';
+
+  const baseLatex = isUVXYZ ? 's = u v^1 x y^1 z' : 's = u v^1 w x^1 y';
+  const pumpedLatex = isUVXYZ
+    ? `s_{${i}} = u v^{${i}} x y^{${i}} z`
+    : `s_{${i}} = u v^{${i}} w x^{${i}} y`;
+
+  // Trigger celebration when contradiction is proven (i != 1 and membership is false)
   useEffect(() => {
     if (i !== 1 && !membership.isValid) {
-      // micro confetti burst to reward understanding
       try {
         confetti({
           particleCount: 25,
@@ -55,49 +69,63 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
           <div className="flex items-center space-x-2">
             <h3 className="text-base font-bold text-white flex items-center">
               <Zap className="w-4 h-4 text-amber-400 mr-2" />
-              Pumping Demonstration: <MathView math="s_i = u v^i w x^i y" className="ml-1 text-indigo-300 font-mono" />
+              Pumping Demonstration: <MathView math={pumpedLatex} className="ml-1 text-indigo-300 font-mono" />
             </h3>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            For pumping length <MathView math={`p = ${p}`} />, vary exponent <MathView math="i \ge 0" /> to duplicate or eliminate <MathView math="v" /> and <MathView math="x" />.
+            For pumping length <MathView math={`p = ${p}`} />, vary exponent <MathView math="i \ge 0" /> to duplicate or eliminate <MathView math="v" /> and <MathView math={pmp2Symbol} />.
           </p>
         </div>
 
-        {/* Quick i buttons: i=0 (down), i=1 (base), i=2 (up), custom */}
-        <div className="flex items-center space-x-2 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
+        {/* Quick i buttons: i=0 (down), i=1 (base), i=2 (up 2x), i=3 (Notebook Step 7) */}
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
           <button
             onClick={() => onIChange(0)}
-            className={`px-3 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition ${
+            className={`px-2.5 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition ${
               i === 0
                 ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <TrendingDown className="w-3.5 h-3.5" />
-            <span>i = 0 (Pump Down)</span>
+            <span>i = 0 (Down)</span>
           </button>
 
           <button
             onClick={() => onIChange(1)}
-            className={`px-3 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition ${
+            className={`px-2.5 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition ${
               i === 1
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <span>i = 1 (Original)</span>
+            <span>i = 1 (Base)</span>
           </button>
 
           <button
             onClick={() => onIChange(2)}
-            className={`px-3 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition ${
+            className={`px-2.5 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition ${
               i === 2
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
             <TrendingUp className="w-3.5 h-3.5" />
-            <span>i = 2 (Pump Up)</span>
+            <span>i = 2 (2x)</span>
+          </button>
+
+          {/* Highlighted i = 3 button from Step 7 of the user's handwritten notes */}
+          <button
+            onClick={() => onIChange(3)}
+            className={`px-3 py-1 text-xs rounded-lg font-bold flex items-center space-x-1 transition border ${
+              i === 3
+                ? 'bg-gradient-to-r from-amber-500 to-indigo-600 text-white border-amber-400 shadow-md shadow-indigo-600/40 glow-active'
+                : 'bg-slate-900 text-amber-300 border-amber-600/50 hover:bg-slate-800'
+            }`}
+            title="Notebook Step 7: let i = 3, s = u v³ x y³ z"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-300" />
+            <span>i = 3 (Notes Step 7)</span>
           </button>
 
           {/* Stepper for i */}
@@ -111,8 +139,8 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
               -
             </button>
             <button
-              onClick={() => onIChange(Math.min(5, i + 1))}
-              disabled={i >= 5}
+              onClick={() => onIChange(Math.min(6, i + 1))}
+              disabled={i >= 6}
               className="w-5 h-5 rounded bg-slate-800 hover:bg-slate-700 text-white text-xs disabled:opacity-30"
             >
               +
@@ -128,7 +156,7 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5 font-medium">
             <span className="flex items-center">
               <span className="w-2 h-2 rounded-full bg-slate-500 mr-1.5"></span>
-              Base String <MathView math="s = u v^1 w x^1 y" className="ml-1 text-slate-300" />
+              Base String <MathView math={baseLatex} className="ml-1 text-slate-300" />
             </span>
             <span className="font-mono text-[11px] text-slate-400">
               Length: {decomp.uLen + decomp.vLen + decomp.wLen + decomp.xLen + decomp.yLen}
@@ -150,10 +178,16 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
             <div className="flex items-center space-x-2">
               <span className="flex items-center text-indigo-300">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400 mr-1" />
-                Pumped String <MathView math={`s_{${i}} = u v^{${i}} w x^{${i}} y`} className="ml-1 text-white" />
+                Pumped String <MathView math={pumpedLatex} className="ml-1 text-white" />
               </span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                {i === 0 ? 'PUMP DOWN (v & x removed)' : i === 1 ? 'UNPUMPED' : `PUMP UP (${i}x duplication)`}
+                {i === 0
+                  ? 'PUMP DOWN (v & ' + pmp2Symbol + ' removed)'
+                  : i === 1
+                  ? 'UNPUMPED BASE STRING'
+                  : i === 3
+                  ? 'CLASS NOTES STEP 7: PUMP UP 3x'
+                  : `PUMP UP (${i}x duplication)`}
               </span>
             </div>
             <span className="font-mono text-xs text-indigo-300 bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-800">
@@ -162,14 +196,14 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-1 font-mono text-sm sm:text-base bg-slate-900 p-3 rounded-lg border border-indigo-900/40 overflow-x-auto min-h-[44px]">
-            {/* u */}
+            {/* Part 1: u */}
             {pumped.u && (
               <span className="text-sky-300 bg-sky-950/40 px-1.5 py-0.5 rounded" title={`u: "${pumped.u}"`}>
                 {pumped.u}
               </span>
             )}
 
-            {/* v^i */}
+            {/* Part 2: v^i */}
             {i > 0 && pumped.pumpedV && (
               <span
                 className="text-emerald-300 bg-emerald-950/70 px-1.5 py-0.5 rounded border-2 border-emerald-400 glow-active font-bold"
@@ -185,32 +219,32 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
               </span>
             )}
 
-            {/* w */}
+            {/* Part 3: middle buffer (w in uvwxy, x in uvxyz) */}
             {pumped.w && (
-              <span className="text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded" title={`w: "${pumped.w}"`}>
+              <span className="text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded" title={`${midSymbol}: "${pumped.w}"`}>
                 {pumped.w}
               </span>
             )}
 
-            {/* x^i */}
+            {/* Part 4: pumped 2 (x in uvwxy, y in uvxyz) */}
             {i > 0 && pumped.pumpedX && (
               <span
                 className="text-rose-300 bg-rose-950/70 px-1.5 py-0.5 rounded border-2 border-rose-400 glow-active font-bold"
-                title={`x^${i}: "${pumped.pumpedX}" (${i} copies of x)`}
+                title={`${pmp2Symbol}^${i}: "${pumped.pumpedX}" (${i} copies of ${pmp2Symbol})`}
               >
                 {pumped.pumpedX}
-                <sub className="text-[10px] text-rose-200 ml-0.5">({i}×x)</sub>
+                <sub className="text-[10px] text-rose-200 ml-0.5">({i}×{pmp2Symbol})</sub>
               </span>
             )}
             {i === 0 && decomp.xLen > 0 && (
-              <span className="text-xs line-through text-slate-500 px-1" title="x deleted by i=0">
-                [x deleted]
+              <span className="text-xs line-through text-slate-500 px-1" title={`${pmp2Symbol} deleted by i=0`}>
+                [{pmp2Symbol} deleted]
               </span>
             )}
 
-            {/* y */}
+            {/* Part 5: suffix (y in uvwxy, z in uvxyz) */}
             {pumped.y && (
-              <span className="text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded" title={`y: "${pumped.y}"`}>
+              <span className="text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded" title={`${suffSymbol}: "${pumped.y}"`}>
                 {pumped.y}
               </span>
             )}

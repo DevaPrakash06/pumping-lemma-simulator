@@ -10,6 +10,7 @@ import {
   Sliders,
   ShieldAlert,
   Volume2,
+  BookOpen,
 } from 'lucide-react';
 import { MathView } from './MathView';
 import { BlockVisualizer } from './BlockVisualizer';
@@ -18,7 +19,7 @@ import { PumpingAnimator } from './PumpingAnimator';
 import { CaseExplorer } from './CaseExplorer';
 import { QuantifierMatrix } from './QuantifierMatrix';
 import { P1_STEPS } from '../math/cflProblem1';
-import type { DecompositionCFL, ProofCaseCFL } from '../types/automata';
+import type { DecompositionCFL, FormulaMode, NotationMode, ProofCaseCFL } from '../types/automata';
 
 interface Problem1PresentationProps {
   currentStep: number;
@@ -35,6 +36,10 @@ interface Problem1PresentationProps {
   onDecompChange: (u: number, v: number, w: number, x: number, y: number) => void;
   selectedCaseId: string | null;
   onSelectCase: (c: ProofCaseCFL) => void;
+  formulaMode?: FormulaMode;
+  onFormulaModeChange?: (mode: FormulaMode) => void;
+  notationMode?: NotationMode;
+  onNotationModeChange?: (mode: NotationMode) => void;
 }
 
 export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
@@ -52,6 +57,10 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
   onDecompChange,
   selectedCaseId,
   onSelectCase,
+  formulaMode = 'notebook',
+  onFormulaModeChange,
+  notationMode = 'uvxyz',
+  onNotationModeChange,
 }) => {
   const stepData = P1_STEPS[currentStep - 1] || P1_STEPS[0];
   const totalSteps = P1_STEPS.length;
@@ -83,7 +92,8 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 font-mono">
                   STEP {currentStep} OF {totalSteps}
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center">
+                  <BookOpen className="w-3 h-3 mr-1" />
                   {stepData.tag}
                 </span>
               </div>
@@ -257,8 +267,8 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
                     <span className="text-purple-400 font-bold">bb</span>
                     <span className="text-indigo-400 font-bold">aa</span>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                    <span className="text-slate-500 text-[10px] block font-sans">n = 3 (Length 9)</span>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 ring-2 ring-indigo-500/50">
+                    <span className="text-amber-400 text-[10px] block font-sans font-bold">n = 3 (Class Notes Step 3)</span>
                     <span className="text-cyan-400 font-bold">aaa</span>
                     <span className="text-purple-400 font-bold">bbb</span>
                     <span className="text-indigo-400 font-bold">aaa</span>
@@ -274,7 +284,7 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
             </div>
           )}
 
-          {/* STEP 2: Assume Context-Free & Introduce Pumping Length p */}
+          {/* STEP 2: Assume Context-Free & Introduce Pumping Constant p */}
           {currentStep === 2 && (
             <div className="space-y-4">
               <div className="p-5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-4">
@@ -284,7 +294,7 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
                       Adversary Choice: Pumping Length Constant <MathView math="p \ge 1" />
                     </h4>
                     <p className="text-xs text-slate-400">
-                      In the proof, the adversary provides some positive integer <MathView math="p" />. Slide below to test any <MathView math="p" />:
+                      In the proof, the adversary provides some positive integer <MathView math="p" />. In class notes, we examine <MathView math="p = 5" />:
                     </p>
                   </div>
                   <div className="flex items-center space-x-3 bg-slate-900 px-4 py-2 rounded-xl border border-slate-800">
@@ -324,84 +334,75 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
             </div>
           )}
 
-          {/* STEP 3: Select String s = a^p b^p a^p */}
+          {/* STEP 3: Select String From L (Class Notes: n = 3) */}
           {currentStep === 3 && (
             <div className="space-y-4">
-              <BlockVisualizer p={p} onPChange={onPChange} decomp={decomp} />
-            </div>
-          )}
-
-          {/* STEP 4: Introduce Decomposition s = uvwxy & Conditions */}
-          {currentStep === 4 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
-                  <div className="flex items-center space-x-2 text-indigo-400 font-bold text-sm">
-                    <span className="px-2 py-0.5 rounded bg-indigo-900/50 text-[11px] font-mono">1</span>
-                    <span>Bounded Window</span>
-                  </div>
-                  <MathView math="|vwx| \le p" className="text-sm font-mono text-cyan-300 block" />
-                  <p className="text-xs text-slate-400">
-                    The combined length of <MathView math="v, w, x" /> cannot exceed the pumping constant <MathView math="p" />.
-                  </p>
+              <div className="p-5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-4">
+                <div className="flex items-center space-x-2 text-indigo-300 font-bold text-sm">
+                  <BookOpen className="w-4 h-4 text-indigo-400" />
+                  <span>Class Notes Step 3: Select Any One String From L for n = 3</span>
                 </div>
-
-                <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
-                  <div className="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
-                    <span className="px-2 py-0.5 rounded bg-emerald-900/50 text-[11px] font-mono">2</span>
-                    <span>Non-Trivial Pump</span>
-                  </div>
-                  <MathView math="|vx| > 0" className="text-sm font-mono text-emerald-300 block" />
-                  <p className="text-xs text-slate-400">
-                    At least one of <MathView math="v" /> or <MathView math="x" /> must be non-empty (<MathView math="|v| + |x| \ge 1" />).
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-2">
-                  <div className="flex items-center space-x-2 text-purple-400 font-bold text-sm">
-                    <span className="px-2 py-0.5 rounded bg-purple-900/50 text-[11px] font-mono">3</span>
-                    <span>Universal Membership</span>
-                  </div>
-                  <MathView math="\forall i \ge 0: u v^i w x^i y \in L" className="text-sm font-mono text-purple-300 block" />
-                  <p className="text-xs text-slate-400">
-                    Pumping with ANY non-negative integer <MathView math="i = 0, 1, 2, \dots" /> must produce strings in <MathView math="L" />.
-                  </p>
+                <div className="p-4 rounded-xl bg-slate-900 border border-indigo-900/40 text-center font-mono">
+                  <span className="text-xs text-slate-400 block mb-1">Concrete String for n = 3:</span>
+                  <span className="text-lg sm:text-2xl font-bold tracking-wider">
+                    <span className="text-cyan-400">aaa</span>
+                    <span className="text-purple-400">bbb</span>
+                    <span className="text-indigo-400">aaa</span>
+                  </span>
+                  <span className="text-xs text-slate-400 block mt-2">
+                    Block 1: 3 a's • Block 2: 3 b's • Block 3: 3 a's (Total Length = 9)
+                  </span>
                 </div>
               </div>
-
-              {/* Decomposition Bar */}
-              <DecompositionBar
-                p={p}
-                decomp={decomp}
-                onDecompChange={onDecompChange}
-                selectedCaseId={selectedCaseId}
-                onSelectCase={onSelectCase}
-              />
             </div>
           )}
 
-          {/* STEP 5: Visualize 3 Blocks & Explore Valid Decompositions */}
+          {/* STEP 4: Applying Pumping Lemma for Selected String */}
+          {currentStep === 4 && (
+            <div className="space-y-4">
+              <div className="p-5 rounded-xl bg-slate-950/90 border border-slate-800 space-y-3">
+                <div className="flex items-center space-x-2 text-indigo-300 font-bold text-sm">
+                  <BookOpen className="w-4 h-4 text-indigo-400" />
+                  <span>Class Notes Step 4: Applying Pumping Lemma for Selected String</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  In Step 4, we apply the Context-Free Pumping Lemma to strings in <MathView math="L = \{ a^n b^n a^n \mid n \ge 1 \}" />.
+                  To ensure that the string defeats any arbitrary pumping length constant <MathView math="p" />, the string must be chosen as a function of <MathView math="p" />.
+                </p>
+                <div className="p-3.5 rounded-lg bg-indigo-950/30 border border-indigo-900/40 text-xs text-indigo-200">
+                  <span className="font-bold block mb-1">Key Strategy:</span>
+                  The middle block of b's must have length <MathView math="\ge p" /> so that the bounded window <MathView math="|vxy| \le p" /> cannot reach across both the first and third blocks!
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: Choose Value for P with Formula s = a^p a a b^p b b a^p a a */}
           {currentStep === 5 && (
             <div className="space-y-4">
-              <BlockVisualizer p={p} onPChange={onPChange} decomp={decomp} />
-              <DecompositionBar
+              <BlockVisualizer
                 p={p}
+                onPChange={onPChange}
                 decomp={decomp}
-                onDecompChange={onDecompChange}
-                selectedCaseId={selectedCaseId}
-                onSelectCase={onSelectCase}
+                formulaMode={formulaMode}
+                onFormulaModeChange={onFormulaModeChange}
+                notationMode={notationMode}
+                onNotationModeChange={onNotationModeChange}
               />
             </div>
           )}
 
-          {/* STEP 6: Pumping Controls for i = 0, 1, and 2 */}
+          {/* STEP 6: Decomposition s = uvxyz and Constraints (|vxy| ≤ p, |vy| > 0) */}
           {currentStep === 6 && (
             <div className="space-y-4">
-              <PumpingAnimator
+              <BlockVisualizer
                 p={p}
+                onPChange={onPChange}
                 decomp={decomp}
-                i={i}
-                onIChange={onIChange}
+                formulaMode={formulaMode}
+                onFormulaModeChange={onFormulaModeChange}
+                notationMode={notationMode}
+                onNotationModeChange={onNotationModeChange}
               />
               <DecompositionBar
                 p={p}
@@ -409,39 +410,50 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
                 onDecompChange={onDecompChange}
                 selectedCaseId={selectedCaseId}
                 onSelectCase={onSelectCase}
+                formulaMode={formulaMode}
+                notationMode={notationMode}
               />
             </div>
           )}
 
-          {/* STEP 7: The Proof: Why All Decompositions Fail (|vwx| <= p) */}
+          {/* STEP 7: Pumping Step for i ≥ 0 (Class Notes: let i = 3) */}
           {currentStep === 7 && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-slate-950/90 border border-indigo-500/40 space-y-2">
                 <div className="flex items-center space-x-2 text-amber-300 font-bold text-sm">
                   <ShieldAlert className="w-4 h-4 text-amber-400" />
-                  <span>The Geometric Bottleneck: Buffer of p b's Prevents Crossing</span>
+                  <span>Class Notes Step 7: Testing i = 3 Produces Unequal Counts!</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  Because <MathView math="|vwx| \le p" />, the span of <MathView math="vwx" /> is bounded by <MathView math="p" />. But between the first block of <MathView math="a^p" /> and the third block of <MathView math="a^p" /> lies the entire middle block of <MathView math="p" /> <code className="text-purple-300 font-mono">b</code>'s. Spanning from Block 1 to Block 3 would require length at least <MathView math="p + 2 > p" />! Therefore, <MathView math="vwx" /> touches at most 2 adjacent blocks. Since <MathView math="|vx| > 0" />, pumping changes at most 2 block counts, leaving the third block fixed at <MathView math="p" />, which destroys equal counts in all 5 cases.
+                  In Step 7 of the notes, we set <code className="text-amber-300 font-bold">i = 3</code>.
+                  Because <MathView math="|vxy| \le p" /> and <MathView math="|vy| = 4 > 0" />, pumping with <MathView math="i = 3" /> duplicates <MathView math="v" /> and <MathView math="y" /> 3 times.
+                  This expands the first two blocks to 11 symbols each, while Block 3 stays fixed at 7 symbols!
+                  Since <MathView math="11 \ne 7" />, equality is broken and <MathView math="s_3 \notin L" />!
                 </p>
               </div>
-
-              <CaseExplorer
-                p={p}
-                selectedCaseId={selectedCaseId}
-                onSelectCase={onSelectCase}
-              />
 
               <PumpingAnimator
                 p={p}
                 decomp={decomp}
                 i={i}
                 onIChange={onIChange}
+                notationMode={notationMode}
+                formulaMode={formulaMode}
+              />
+
+              <DecompositionBar
+                p={p}
+                decomp={decomp}
+                onDecompChange={onDecompChange}
+                selectedCaseId={selectedCaseId}
+                onSelectCase={onSelectCase}
+                formulaMode={formulaMode}
+                notationMode={notationMode}
               />
             </div>
           )}
 
-          {/* STEP 8: Contradiction & Conclusion: L is Not Context-Free */}
+          {/* STEP 8: Contradiction Across All 5 Cases & Conclusion */}
           {currentStep === 8 && (
             <div className="space-y-6">
               {/* Final Conclusion Certificate */}
@@ -459,7 +471,7 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-                  Every possible decomposition <MathView math="s = uvwxy" /> satisfying <MathView math="|vwx| \le p" /> and <MathView math="|vx| > 0" /> fails condition (3) for either <MathView math="i = 0" /> or <MathView math="i = 2" /> across all 5 exhaustive structural cases. The Pumping Lemma does not hold for <MathView math="L" />. Hence, the initial assumption that <MathView math="L" /> is context-free must be false.
+                  Every possible decomposition <MathView math={notationMode === 'uvxyz' ? 's = uvxyz' : 's = uvwxy'} /> satisfying the pumping lemma constraints fails membership for some <MathView math="i \ge 0" /> (such as <MathView math="i = 3" /> or <MathView math="i = 0" />) across all 5 exhaustive structural cases. The Pumping Lemma does not hold for <MathView math="L" />. Hence, the initial assumption that <MathView math="L" /> is context-free must be false.
                 </p>
 
                 <div className="pt-3 border-t border-emerald-900/60 flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -471,6 +483,13 @@ export const Problem1Presentation: React.FC<Problem1PresentationProps> = ({
                   </span>
                 </div>
               </div>
+
+              {/* 5 Exhaustive Cases */}
+              <CaseExplorer
+                p={p}
+                selectedCaseId={selectedCaseId}
+                onSelectCase={onSelectCase}
+              />
 
               {/* Quantifier Matrix / Game Theory View */}
               <QuantifierMatrix />

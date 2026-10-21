@@ -1,9 +1,12 @@
+export type FormulaMode = 'notebook' | 'standard';
+export type NotationMode = 'uvxyz' | 'uvwxy';
+
 export type DecompositionCFL = {
   u: string;
   v: string;
-  w: string;
-  x: string;
-  y: string;
+  w: string; // middle buffer in uvwxy notation, or x in uvxyz notation
+  x: string; // pumped 2 in uvwxy notation, or y in uvxyz notation
+  y: string; // suffix in uvwxy notation, or z in uvxyz notation
   uLen: number;
   vLen: number;
   wLen: number;

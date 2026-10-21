@@ -1,30 +1,63 @@
-import type { DecompositionCFL, MembershipResult, ProofCaseCFL } from '../types/automata';
+import type {
+  DecompositionCFL,
+  FormulaMode,
+  MembershipResult,
+  NotationMode,
+  ProofCaseCFL,
+} from '../types/automata';
 
 /**
- * Builds the base string s = a^p b^p a^p for Problem 1
+ * Builds the base string for Problem 1:
+ * - 'notebook': s = a^p a a b^p b b a^p a a (i.e. a^{p+2} b^{p+2} a^{p+2}; let p=5 gives 7 a's, 7 b's, 7 a's; |s| = 21)
+ * - 'standard': s = a^p b^p a^p (for p=5 gives 5 a's, 5 b's, 5 a's; |s| = 15)
  */
-export function buildStringP1(p: number): {
+export function buildStringP1(
+  p: number,
+  formulaMode: FormulaMode = 'notebook'
+): {
   s: string;
   block1: string;
   block2: string;
   block3: string;
   totalLength: number;
+  blockSize: number;
+  formulaMode: FormulaMode;
+  formulaLatex: string;
+  formulaText: string;
 } {
   const safeP = Math.max(1, Math.min(8, Math.floor(p)));
-  const block1 = 'a'.repeat(safeP);
-  const block2 = 'b'.repeat(safeP);
-  const block3 = 'a'.repeat(safeP);
+  const blockSize = formulaMode === 'notebook' ? safeP + 2 : safeP;
+  const block1 = 'a'.repeat(blockSize);
+  const block2 = 'b'.repeat(blockSize);
+  const block3 = 'a'.repeat(blockSize);
+  const s = block1 + block2 + block3;
+
   return {
-    s: block1 + block2 + block3,
+    s,
     block1,
     block2,
     block3,
-    totalLength: safeP * 3,
+    totalLength: blockSize * 3,
+    blockSize,
+    formulaMode,
+    formulaLatex:
+      formulaMode === 'notebook'
+        ? `s = a^p a a \\, b^p b b \\, a^p a a = a^{${safeP}+2} b^{${safeP}+2} a^{${safeP}+2} = a^{${blockSize}} b^{${blockSize}} a^{${blockSize}}`
+        : `s = a^p b^p a^p = a^{${safeP}} b^{${safeP}} a^{${safeP}}`,
+    formulaText:
+      formulaMode === 'notebook'
+        ? `s = aᵖ a a bᵖ b b aᵖ a a (n = p + 2 = ${blockSize}, |s| = ${blockSize * 3})`
+        : `s = aᵖ bᵖ aᵖ (n = p = ${safeP}, |s| = ${safeP * 3})`,
   };
 }
 
 /**
  * Validates whether a decomposition satisfies CFL Pumping Lemma constraints:
+ * In notebook notation (uvxyz):
+ * 1. |vxy| <= p
+ * 2. |vy| > 0
+ * 3. Total length |uvxyz| === |s|
+ * In standard notation (uvwxy):
  * 1. |vwx| <= p
  * 2. |vx| > 0
  * 3. Total length |uvwxy| === |s|
@@ -35,7 +68,9 @@ export function validateDecomposition(
   vLen: number,
   wLen: number,
   xLen: number,
-  yLen: number
+  yLen: number,
+  formulaMode: FormulaMode = 'notebook',
+  notationMode: NotationMode = 'uvxyz'
 ): {
   isValid: boolean;
   vwxValid: boolean;
@@ -44,29 +79,38 @@ export function validateDecomposition(
   errors: string[];
 } {
   const total = uLen + vLen + wLen + xLen + yLen;
-  const targetTotal = 3 * p;
-  const vwxLen = vLen + wLen + xLen;
-  const vxLen = vLen + xLen;
+  const targetTotal = formulaMode === 'notebook' ? 3 * (p + 2) : 3 * p;
+  const windowLen = vLen + wLen + xLen;
+  const pumpedLen = vLen + xLen;
 
-  const vwxValid = vwxLen <= p;
-  const vxValid = vxLen > 0;
+  const windowValid = windowLen <= p;
+  const pumpedValid = pumpedLen > 0;
   const totalValid = total === targetTotal;
 
+  const windowLabel = notationMode === 'uvxyz' ? '|vxy|' : '|vwx|';
+  const pumpedLabel = notationMode === 'uvxyz' ? '|vy|' : '|vx|';
+
   const errors: string[] = [];
-  if (!vwxValid) {
-    errors.push(`|vwx| = ${vwxLen} exceeds pumping length p = ${p}. Condition requires |vwx| ≤ p.`);
+  if (!windowValid) {
+    errors.push(
+      `${windowLabel} = ${windowLen} exceeds pumping length p = ${p}. Condition requires ${windowLabel} ≤ p.`
+    );
   }
-  if (!vxValid) {
-    errors.push(`|vx| = 0. Condition requires |vx| > 0 (at least one of v or x must be non-empty).`);
+  if (!pumpedValid) {
+    errors.push(
+      `${pumpedLabel} = 0. Condition requires ${pumpedLabel} > 0 (at least one pumped part must be non-empty).`
+    );
   }
   if (!totalValid) {
-    errors.push(`Decomposition length ${total} does not equal |s| = ${targetTotal}.`);
+    errors.push(
+      `Decomposition length ${total} does not equal |s| = ${targetTotal}.`
+    );
   }
 
   return {
-    isValid: vwxValid && vxValid && totalValid,
-    vwxValid,
-    vxValid,
+    isValid: windowValid && pumpedValid && totalValid,
+    vwxValid: windowValid,
+    vxValid: pumpedValid,
     totalValid,
     errors,
   };
@@ -109,7 +153,9 @@ export function sliceDecomposition(
 }
 
 /**
- * Generates the pumped string s_i = u v^i w x^i y
+ * Generates the pumped string:
+ * - In uvwxy notation: s_i = u v^i w x^i y
+ * - In uvxyz notation: s_i = u v^i x y^i z
  */
 export function pumpString(decomp: DecompositionCFL, i: number): {
   pumpedString: string;
@@ -178,8 +224,6 @@ export function checkMembershipP1(str: string): MembershipResult {
   const match = str.match(/^(a+)(b+)(a+)$/);
 
   if (!match) {
-    // If not matching a+ b+ a+, let's determine why:
-    // Could have alternating symbols (e.g. abab...) or missing blocks
     const a1 = str.match(/^a+/)?.[0]?.length || 0;
     const remainingAfterA = str.slice(a1);
     const b = remainingAfterA.match(/^b+/)?.[0]?.length || 0;
@@ -191,9 +235,9 @@ export function checkMembershipP1(str: string): MembershipResult {
     if (extra.length > 0) {
       specificReason = `Pumping generated symbols out of order (extra "${extra.slice(0, 8)}..."). The string is not of the form a*b*a*.`;
     } else if (b === 0) {
-      specificReason = 'The middle block of b\'s is completely missing (zero b\'s).';
+      specificReason = "The middle block of b's is completely missing (zero b's).";
     } else if (a1 === 0 || a2 === 0) {
-      specificReason = 'One of the required blocks of a\'s is missing.';
+      specificReason = "One of the required blocks of a's is missing.";
     }
 
     return {
@@ -243,115 +287,167 @@ export function checkMembershipP1(str: string): MembershipResult {
 }
 
 /**
- * Standard exhaustive 5 proof cases covering all valid decompositions for s = a^p b^p a^p
+ * Standard exhaustive 5 proof cases covering all valid decompositions:
+ * Works for both formula modes (notebook: s = a^p a a b^p b b a^p a a, standard: s = a^p b^p a^p)
+ * and both notation styles (uvxyz vs uvwxy).
  */
-export function getStandardCasesP1(p: number): ProofCaseCFL[] {
+export function getStandardCasesP1(
+  p: number,
+  formulaMode: FormulaMode = 'notebook',
+  notationMode: NotationMode = 'uvxyz'
+): ProofCaseCFL[] {
+  const safeP = Math.max(1, Math.min(8, Math.floor(p)));
+  const k = formulaMode === 'notebook' ? safeP + 2 : safeP;
+  const total = 3 * k;
+  const wnd = notationMode === 'uvxyz' ? 'vxy' : 'vwx';
+  const pmp = notationMode === 'uvxyz' ? 'vy' : 'vx';
+
+  // Sample decompositions tailored for each case
+  // Case 1: Window in Block 1
+  const c1V = formulaMode === 'notebook' ? 2 : 1;
+  const c1W = 0;
+  const c1X = 1;
+  const c1U = Math.max(0, k - (c1V + c1W + c1X));
+  const c1Y = total - (c1U + c1V + c1W + c1X);
+
+  // Case 2: Straddles Block 1 & Block 2 (matches handwritten notes Step 6: |vxy| <= 5, |vy| > 0)
+  const c2V = formulaMode === 'notebook' ? 2 : 1;
+  const c2W = formulaMode === 'notebook' && safeP >= 5 ? 1 : 0;
+  const c2X = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
+  const c2U = Math.max(0, k - c2V);
+  const c2Y = total - (c2U + c2V + c2W + c2X);
+
+  // Case 3: In Block 2
+  const c3V = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
+  const c3W = formulaMode === 'notebook' && safeP >= 5 ? 1 : 0;
+  const c3X = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
+  const c3U = k;
+  const c3Y = total - (c3U + c3V + c3W + c3X);
+
+  // Case 4: Straddles Block 2 & Block 3
+  const c4V = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
+  const c4W = formulaMode === 'notebook' && safeP >= 5 ? 1 : 0;
+  const c4X = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
+  const c4U = 2 * k - (c4V + c4W);
+  const c4Y = total - (c4U + c4V + c4W + c4X);
+
+  // Case 5: In Block 3
+  const c5V = formulaMode === 'notebook' ? 2 : 1;
+  const c5W = 0;
+  const c5X = 1;
+  const c5U = 2 * k;
+  const c5Y = total - (c5U + c5V + c5W + c5X);
+
+  const block1Desc = formulaMode === 'notebook' ? 'Block 1 (aᵖ a a)' : 'Block 1 (aᵖ)';
+  const block2Desc = formulaMode === 'notebook' ? 'Block 2 (bᵖ b b)' : 'Block 2 (bᵖ)';
+  const block3Desc = formulaMode === 'notebook' ? 'Block 3 (aᵖ a a)' : 'Block 3 (aᵖ)';
+
   return [
     {
       id: 'case1',
-      name: 'Case 1: vwx is entirely within Block 1 (aᵖ)',
-      shortDesc: 'vwx ⊆ 1st block of a\'s',
+      name: `Case 1: ${wnd} is entirely within ${block1Desc}`,
+      shortDesc: `${wnd} ⊆ 1st block of a's`,
       vwxLocation: 'block1',
       description:
-        `The substring vwx is completely contained in the first block of a's. Thus, v and x consist exclusively of a's from Block 1.`,
+        `The substring ${wnd} is completely contained in the first block of a's. Thus, ${pmp} consists exclusively of a's from Block 1.`,
       sampleDecomp: {
-        uLen: Math.max(0, p - 2),
-        vLen: 1,
-        wLen: 0,
-        xLen: 1,
-        yLen: 2 * p,
+        uLen: c1U,
+        vLen: c1V,
+        wLen: c1W,
+        xLen: c1X,
+        yLen: c1Y,
       },
       whyItFails:
-        `Because vx contains only a's from Block 1, pumping changes the count of the first block of a's while the middle block of b's and the second block of a's remain fixed at length p. For i = 0, the first block has < p a's while Block 3 has p a's. For i = 2, the first block has > p a's while Block 3 has p a's. Hence the counts cannot be equal.`,
-      recommendedI: 0,
+        `Because ${pmp} contains only a's from Block 1, pumping changes the count of the first block of a's while the middle block of b's and the second block of a's remain fixed at length ${k}. For i = 0 (pumping down) or i = 3 (pumping up), the counts become unequal.`,
+      recommendedI: 3,
       pumpedExplanation:
-        `With i = 0 (pumping down), we remove v and x. The first block of a's decreases to p - |vx| < p, while the second block of a's remains at p. Thus count(a¹) ≠ count(a²).`,
+        `With i = 3 (pumping up 3x as in Step 7), the first block of a's expands while Block 2 and Block 3 remain at ${k}. Thus count(a¹) ≠ count(a²).`,
     },
     {
       id: 'case2',
-      name: 'Case 2: vwx straddles Block 1 (aᵖ) and Block 2 (bᵖ)',
-      shortDesc: 'vwx overlaps 1st a\'s and b\'s',
+      name: `Case 2: ${wnd} straddles ${block1Desc} and ${block2Desc}`,
+      shortDesc: `${wnd} overlaps 1st a's and b's (Notes Step 6)`,
       vwxLocation: 'block1-2',
       description:
-        `The substring vwx crosses the boundary between the first block of a's and the block of b's. Note that vwx cannot contain any symbols from the second block of a's because |vwx| ≤ p and the entire block of b's has length p.`,
+        `The substring ${wnd} crosses the boundary between the first block of a's and the block of b's (matching Step 6: |${wnd}| ≤ ${safeP}, |${pmp}| > 0). It cannot reach Block 3 because Block 2 alone has ${k} b's and |${wnd}| ≤ ${safeP} < ${k}.`,
       sampleDecomp: {
-        uLen: p - 1,
-        vLen: 1, // last 'a' of block 1
-        wLen: 0,
-        xLen: 1, // first 'b' of block 2
-        yLen: 2 * p - 1,
+        uLen: c2U,
+        vLen: c2V,
+        wLen: c2W,
+        xLen: c2X,
+        yLen: c2Y,
       },
       whyItFails:
-        `Two subcases occur: (a) If v or x contains both a and b, pumping i = 2 duplicates that mixed substring, causing a's and b's to interleave (e.g. ...abab...), so the string is no longer even in the form a*b*a*. (b) If v is purely a's and x is purely b's, neither v nor x contains any symbols from the second block of a's (Block 3). Thus Block 3 remains strictly with p a's. Pumping i = 0 or i = 2 changes the number of first a's and/or b's, making it impossible for all three blocks to maintain equal count p.`,
-      recommendedI: 2,
+        `Because ${wnd} cannot reach Block 3, Block 3 remains rigidly fixed at ${k} a's. Pumping with i = 3 increases the first block of a's and middle b's, leaving Block 3 behind. Thus equality is broken.`,
+      recommendedI: 3,
       pumpedExplanation:
-        `With i = 2 (pumping up), the counts of first a's and/or b's increase above p, but Block 3 remains untouched at p a's. Alternatively, if v or x straddles the boundary, pumping produces out-of-order characters.`,
+        `With i = 3 (Step 7: let i = 3), the pumped string has unequal symbol counts (e.g. 11 a's, 11 b's, but only 7 a's in Block 3). Thus s₃ ∉ L.`,
     },
     {
       id: 'case3',
-      name: 'Case 3: vwx is entirely within Block 2 (bᵖ)',
-      shortDesc: 'vwx ⊆ block of b\'s',
+      name: `Case 3: ${wnd} is entirely within ${block2Desc}`,
+      shortDesc: `${wnd} ⊆ middle block of b's`,
       vwxLocation: 'block2',
       description:
-        `The substring vwx is completely contained in the middle block of b's. Therefore, v and x consist exclusively of b's.`,
+        `The substring ${wnd} is completely contained in the middle block of b's. Therefore, ${pmp} consists exclusively of b's.`,
       sampleDecomp: {
-        uLen: p,
-        vLen: 1,
-        wLen: 0,
-        xLen: 1,
-        yLen: 2 * p - 2,
+        uLen: c3U,
+        vLen: c3V,
+        wLen: c3W,
+        xLen: c3X,
+        yLen: c3Y,
       },
       whyItFails:
-        `Since vx consists entirely of b's, pumping changes only the number of b's. Both the first block of a's and the second block of a's remain completely untouched with exactly p a's each. For i = 0, the number of b's is p - |vx| < p. For i = 2, the number of b's is p + |vx| > p. In neither case does the number of b's equal the number of a's.`,
-      recommendedI: 0,
+        `Since ${pmp} consists entirely of b's, pumping alters only the number of b's. Both Block 1 and Block 3 remain fixed at ${k} a's. For i = 0 or i = 3, count(b) ≠ count(a).`,
+      recommendedI: 3,
       pumpedExplanation:
-        `With i = 0 (pumping down), the number of b's becomes strictly less than p, while both blocks of a's have length p. Thus count(b) < count(a¹), violating membership.`,
+        `With i = 3, the number of b's increases far above ${k}, while both blocks of a's remain at ${k}. Thus count(b) > count(a).`,
     },
     {
       id: 'case4',
-      name: 'Case 4: vwx straddles Block 2 (bᵖ) and Block 3 (aᵖ)',
-      shortDesc: 'vwx overlaps b\'s and 2nd a\'s',
+      name: `Case 4: ${wnd} straddles ${block2Desc} and ${block3Desc}`,
+      shortDesc: `${wnd} overlaps b's and 2nd a's`,
       vwxLocation: 'block2-3',
       description:
-        `The substring vwx crosses the boundary between the block of b's and the second block of a's. Note that vwx cannot reach the first block of a's because the entire block of b's separates them and |vwx| ≤ p.`,
+        `The substring ${wnd} crosses the boundary between the block of b's and the second block of a's. Note that ${wnd} cannot reach Block 1 because the intervening block of b's separates them and |${wnd}| ≤ ${safeP}.`,
       sampleDecomp: {
-        uLen: 2 * p - 1,
-        vLen: 1, // last 'b' of block 2
-        wLen: 0,
-        xLen: 1, // first 'a' of block 3
-        yLen: p - 1,
+        uLen: c4U,
+        vLen: c4V,
+        wLen: c4W,
+        xLen: c4X,
+        yLen: c4Y,
       },
       whyItFails:
-        `Because vwx is restricted to Block 2 and Block 3, vx contains zero symbols from the first block of a's (Block 1). Therefore, Block 1 remains rigidly fixed at p a's. If v or x contains both b and a, pumping i = 2 introduces out-of-order b's and a's. If v is all b's and x is all a's, pumping i = 0 or i = 2 changes the b's and/or second a's, but leaves Block 1 with p a's. In all instances, equality with Block 1 is broken.`,
-      recommendedI: 2,
+        `Because ${wnd} is restricted to Block 2 and Block 3, ${pmp} contains zero symbols from Block 1. Block 1 remains fixed at ${k} a's. Pumping with i = 3 alters b's and second a's, breaking equality with Block 1.`,
+      recommendedI: 3,
       pumpedExplanation:
-        `With i = 2, either the string gains out-of-order characters (...ba...), or the count of b's and second a's changes while Block 1 stays at p a's. Thus s₂ ∉ L.`,
+        `With i = 3, Block 1 stays fixed at ${k} a's while Block 2 and/or Block 3 change. Hence s₃ ∉ L.`,
     },
     {
       id: 'case5',
-      name: 'Case 5: vwx is entirely within Block 3 (second aᵖ)',
-      shortDesc: 'vwx ⊆ 2nd block of a\'s',
+      name: `Case 5: ${wnd} is entirely within ${block3Desc}`,
+      shortDesc: `${wnd} ⊆ 2nd block of a's`,
       vwxLocation: 'block3',
       description:
-        `The substring vwx is completely contained in the second block of a's. Therefore, v and x consist exclusively of a's from Block 3.`,
+        `The substring ${wnd} is completely contained in the second block of a's. Therefore, ${pmp} consists exclusively of a's from Block 3.`,
       sampleDecomp: {
-        uLen: 2 * p,
-        vLen: 1,
-        wLen: 0,
-        xLen: 1,
-        yLen: Math.max(0, p - 2),
+        uLen: c5U,
+        vLen: c5V,
+        wLen: c5W,
+        xLen: c5X,
+        yLen: c5Y,
       },
       whyItFails:
-        `Since vx contains only a's from Block 3, pumping alters only the count of the second block of a's. The first block of a's and the middle block of b's remain unchanged with exactly p symbols each. For i = 0, count(a²) = p - |vx| < p. For i = 2, count(a²) = p + |vx| > p. Both violate count(a¹) = count(b) = count(a²).`,
-      recommendedI: 0,
+        `Since ${pmp} contains only a's from Block 3, pumping alters only Block 3. Block 1 and Block 2 remain untouched at ${k} symbols each. For i = 0 or i = 3, count(a²) ≠ count(a¹).`,
+      recommendedI: 3,
       pumpedExplanation:
-        `With i = 0 (pumping down), the second block of a's has length p - |vx| < p, while the first block still has p a's. Thus count(a¹) ≠ count(a²).`,
+        `With i = 3, the second block of a's expands while Block 1 remains at ${k} a's. Contradiction!`,
     },
   ];
 }
 
 /**
- * Step descriptions for Problem 1 interactive proof (8 canonical steps)
+ * Step descriptions for Problem 1 interactive proof (8 canonical steps aligned with handwritten class notes)
  */
 export const P1_STEPS = [
   {
@@ -360,78 +456,79 @@ export const P1_STEPS = [
     tag: 'Language Structure',
     latex: 'L = \\{ a^n b^n a^n \\mid n \\ge 1 \\}',
     summary:
-      "Language definition: L consists of strings with an equal positive number of a's, b's, and a's in three consecutive blocks. For n = 1: 'aba'; n = 2: 'aabbaa'; n = 3: 'aaabbbaaa'. Every string requires exactly three consecutive homogeneous blocks with strictly identical symbol counts.",
+      "Language definition: L consists of strings with an equal positive number of a's, b's, and a's in three consecutive blocks. For n = 1: 'aba'; n = 2: 'aabbaa'; n = 3: 'aaabbbaaa'. Every valid string requires three consecutive homogeneous blocks with strictly identical symbol counts.",
     speakerNotes:
-      "Start by explaining the three consecutive blocks: first a^n, then b^n, then a^n. Note that ordinary pushdown automata have only one stack, making it impossible to check two independent balance comparisons (a's with b's, and b's with second a's) simultaneously.",
+      "Start by explaining the three consecutive blocks: first a^n, then b^n, then a^n. Note that ordinary pushdown automata have only one stack, making it impossible to check two independent balance comparisons simultaneously.",
   },
   {
     step: 2,
-    title: 'Step 2: Assume Context-Free & Introduce Pumping Length p',
+    title: 'Step 2: Assume Context-Free & Introduce Pumping Constant p',
     tag: 'Proof by Contradiction',
-    latex: '\\text{Assume } L \\in \\text{CFL} \\implies \\exists p \\ge 1 \\text{ (pumping length)}',
+    latex: '\\text{Assume } L \\in \\text{CFL} \\implies \\exists p \\ge 1 \\text{ (Pumping Length)}',
     summary:
-      'We assume for the sake of contradiction that L is context-free. According to the Pumping Lemma for Context-Free Languages, there exists a pumping length constant p ≥ 1 (tied to Chomsky Normal Form parse tree heights) guaranteed for L.',
+      'We assume for the sake of contradiction that L is context-free. According to the Pumping Lemma for Context-Free Languages, there exists an adversary pumping length constant p ≥ 1 guaranteed for L.',
     speakerNotes:
-      'Emphasize that the proof proceeds by contradiction. We do not know the exact value of p, but the lemma guarantees that such a constant p exists. The argument must hold for ANY arbitrary positive integer p.',
+      'Emphasize that the proof proceeds by contradiction. The lemma guarantees that a constant p exists, and our argument must hold for ANY arbitrary positive integer p.',
   },
   {
     step: 3,
-    title: 'Step 3: Select String s = aᵖ bᵖ aᵖ',
-    tag: 'Strategic String Choice',
-    latex: 's = a^p b^p a^p \\in L, \\quad |s| = 3p \\ge p',
+    title: 'Step 3: Select String From L (Class Notes: n = 3)',
+    tag: 'Notebook Step 3',
+    latex: '\\text{Select any one string from } L \\text{ for } n = 3 \\implies s = a^3 b^3 a^3 = \\text{aaabbbaaa}',
     summary:
-      'In the quantifier game, we strategically choose the string s = aᵖbᵖaᵖ. Since n = p ≥ 1, s clearly belongs to L, and its total length |s| = 3p is strictly greater than or equal to p.',
+      "Class Notes Step 3: Select a sample string from L for n = 3. Here s = aaabbbaaa (3 a's, 3 b's, 3 a's). This confirms the 3-block structure and gives an immediate concrete demonstration of the language requirements.",
     speakerNotes:
-      'Highlight to your audience: in the quantifier game, the opponent gave us p, but WE have the choice of s. Choosing s = aᵖbᵖaᵖ ensures each block has length p, creating a vital buffer of size p between the first and third blocks.',
+      "Show the audience how s = aaabbbaaa has exactly 3 a's, 3 b's, and 3 a's. Point out how this concrete example illustrates the balance requirement.",
   },
   {
     step: 4,
-    title: 'Step 4: Introduce Decomposition s = uvwxy & Conditions',
-    tag: 'Lemma Conditions',
-    latex: 's = uvwxy \\quad \\text{s.t.} \\quad |vwx| \\le p, \\quad |vx| > 0, \\quad \\forall i \\ge 0: u v^i w x^i y \\in L',
+    title: 'Step 4: Applying Pumping Lemma for Selected String',
+    tag: 'Notebook Step 4',
+    latex: '\\text{Applying Pumping Lemma for selected string, } s = a^n b^n a^n \\text{ for } n = 3 \\implies s = \\text{aaabbbaaa}',
     summary:
-      'The CFL Pumping Lemma asserts that s can be decomposed into five substrings s = uvwxy satisfying three fundamental conditions: (1) |vwx| ≤ p (bounded pumping window), (2) |vx| > 0 (at least one of v or x is non-empty), and (3) for every integer i ≥ 0, uvⁱwxⁱy must belong to L.',
+      'Class Notes Step 4: Applying the pumping lemma to the selected string s = a^n b^n a^n. To formulate a universal mathematical proof that defeats any arbitrary pumping constant p, we must choose s as a function of p.',
     speakerNotes:
-      'Point out the two critical constraints: |vwx| ≤ p restricts the maximum window span, and |vx| > 0 ensures we are pumping actual characters rather than the empty string.',
+      'Explain that while n = 3 is a great illustrative example, a rigorous proof against an arbitrary p requires parameterizing the string using the pumping length p.',
   },
   {
     step: 5,
-    title: 'Step 5: Visualize 3 Blocks & Explore Valid Decompositions',
-    tag: 'Visual String Slices',
-    latex: 's = \\underbrace{a \\dots a}_{\\text{Block 1: } a^p} \\; \\underbrace{b \\dots b}_{\\text{Block 2: } b^p} \\; \\underbrace{a \\dots a}_{\\text{Block 3: } a^p}',
+    title: 'Step 5: Choose Value for P with Formula s = aᵖ a a bᵖ b b aᵖ a a',
+    tag: 'Notebook Step 5 Formula',
+    latex: 's = a^p a a \\, b^p b b \\, a^p a a \\quad (\\text{let } p = 5 \\implies s = a^7 b^7 a^7 = \\text{aaaaaaa bbbbbbb aaaaaaa})',
     summary:
-      "Visualize the three blocks of the selected string with distinct colors (Block 1 in Cyan, Block 2 in Purple, Block 3 in Indigo). Explore valid decompositions and inspect u, v, w, x, y along with their lengths and character slice positions [start, end).",
+      "Class Notes Step 5 Formula: Choose value for P in the given string: s = aᵖ a a bᵖ b b aᵖ a a (i.e. each block has length n = p + 2). Letting p = 5 yields s = a⁷ b⁷ a⁷ = aaaaaaa bbbbbbb aaaaaaa (|s| = 21). This creates a wide middle buffer of 7 b's that exceeds the pumping window p = 5.",
     speakerNotes:
-      'Demonstrate the interactive token bars. Show how adjusting the sliders dynamically reveals the exact substring lengths and slice boundaries, confirming conditions |vwx| ≤ p and |vx| > 0 in real time.',
+      "Emphasize the instructor's formula: s = a^p a a b^p b b a^p a a. For p = 5, s has 7 a's, 7 b's, and 7 a's (length 21). Because the middle block of b's has length 7 > p = 5, no window of length 5 can ever bridge across from the first block of a's to the second block of a's!",
   },
   {
     step: 6,
-    title: 'Step 6: Pumping Controls for i = 0, 1, and 2',
-    tag: 'Animated Pumping Controls',
-    latex: 's_0 = u w y \\quad (i=0) \\qquad s_2 = u v^2 w x^2 y \\quad (i=2)',
+    title: 'Step 6: Decomposition s = uvxyz and Constraints (|vxy| ≤ p, |vy| > 0)',
+    tag: 'Notebook Step 6',
+    latex: 's = uvxyz \\quad \\text{s.t.} \\quad |vxy| \\le p \\implies 5 \\le 5, \\quad |vy| > 0 \\implies 4 > 0',
     summary:
-      'Add pumping controls for i = 0, 1, and 2. Animate the deletion of v and x when i = 0 (pumping down), or the duplication of v and x when i = 2 (pumping up). The resulting string is displayed and evaluated live against the language definition.',
+      "Class Notes Step 6: Decompose s into 5 parts s = uvxyz satisfying the two lemma constraints: (1) |vxy| ≤ p (bounded pumping window; for p = 5, |vxy| = 5 ≤ 5); (2) |vy| > 0 (non-trivial pump; in notes, |vy| = 4 > 0 with |v| = 2, |y| = 2).",
     speakerNotes:
-      'Click i = 0 to watch v and x vanish, or i = 2 to see them duplicate. Point to the live membership card showing why the pumped string immediately violates the equal block count or ordering.',
+      "Highlight the notation s = uvxyz used in the class notes, where v and y are the pumped segments, x is the middle buffer, and z is the suffix. Point out the exact note values: |vxy| = 5 <= 5 and |vy| = 4 > 0.",
   },
   {
     step: 7,
-    title: 'Step 7: The Proof: Why All Decompositions Fail (|vwx| ≤ p)',
-    tag: 'Rigorous Case Analysis',
-    latex: '|vwx| \\le p \\implies vwx \\text{ cannot cover both Block 1 and Block 3}',
+    title: 'Step 7: Pumping Step for i ≥ 0 (Class Notes: let i = 3)',
+    tag: 'Notebook Step 7 Pumping',
+    latex: '\\text{For } i \\ge 0, \\text{ let } i = 3: \\quad s\' = u v^3 x y^3 z = a^{11} b^{11} a^7 \\notin L \\implies \\text{Contradiction!}',
     summary:
-      "Because |vwx| ≤ p, vwx cannot cover both the first and third blocks of aᵖbᵖaᵖ, as the intervening middle block bᵖ alone has length p (spanning both blocks of a's would require |vwx| ≥ p + 2 > p). Since |vx| > 0, pumping changes at least one of the block counts, while at least one block remains fixed at p symbols. Hence, the pumped string cannot preserve the required equal three-block structure in all 5 exhaustive cases.",
+      "Class Notes Step 7: Apply values for i ≥ 0. Testing i = 3 (pump up 3x): z' = u v³ x y³ z yields 11 a's, 11 b's, and 7 a's. Since 11 ≠ 7, the counts are unequal and s' ∉ L. Contradiction!",
     speakerNotes:
-      "This is the heart of the mathematical proof. Because vwx can touch at most two adjacent blocks, pumping with i = 0 or i = 2 leaves whichever block was untouched with p symbols, breaking equality. Test each of the 5 cases on screen.",
+      "Show how pumping with i = 3 duplicates v and y three times. In the notebook example, the first block and middle block expand to 11 symbols while the suffix remains stuck at 7, immediately violating membership in L.",
   },
   {
     step: 8,
-    title: 'Step 8: Contradiction & Conclusion: L is Not Context-Free',
-    tag: 'Final Proof & Conclusion',
-    latex: '\\text{Contradiction!} \\quad \\forall \\text{ valid } uvwxy, \\exists i \\ge 0: u v^i w x^i y \\notin L \\implies L \\notin \\text{CFL} \\quad \\blacksquare',
+    title: 'Step 8: Contradiction Across All 5 Cases & Conclusion',
+    tag: 'Final Proof Complete',
+    latex: '\\text{Contradiction!} \\quad \\forall \\text{ valid } uvxyz, \\exists i \\ge 0: u v^i x y^i z \\notin L \\implies L \\notin \\text{CFL} \\quad \\blacksquare',
     summary:
-      'Since EVERY valid decomposition satisfying the pumping lemma conditions fails for some i ≥ 0, the pumping lemma does not hold for L. The initial assumption that L is context-free is false. Therefore, L = { aⁿ bⁿ aⁿ | n ≥ 1 } is not context-free. Q.E.D.',
+      'Since EVERY valid decomposition satisfying the pumping lemma conditions fails for some i ≥ 0 across all 5 structural cases, the pumping lemma does not hold for L. The initial assumption that L is context-free is false. Therefore, L = { aⁿ bⁿ aⁿ | n ≥ 1 } is not context-free. Q.E.D.',
     speakerNotes:
       'Deliver the final conclusion: We have mathematically proved that no context-free grammar or pushdown automaton can recognize L. The language is strictly context-sensitive.',
   },
 ];
+
