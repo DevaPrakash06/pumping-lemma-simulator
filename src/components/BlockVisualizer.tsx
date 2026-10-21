@@ -1,7 +1,7 @@
 import React from 'react';
 import { Sliders, ShieldAlert, Sparkles, CheckCircle2, BookOpen, Layers } from 'lucide-react';
 import { MathView } from './MathView';
-import type { DecompositionCFL, FormulaMode, NotationMode } from '../types/automata';
+import type { DecompositionCFL, FormulaMode, LanguageType, NotationMode } from '../types/automata';
 import { buildStringP1 } from '../math/cflProblem1';
 
 interface BlockVisualizerProps {
@@ -12,6 +12,8 @@ interface BlockVisualizerProps {
   onFormulaModeChange?: (mode: FormulaMode) => void;
   notationMode?: NotationMode;
   onNotationModeChange?: (mode: NotationMode) => void;
+  languageType?: LanguageType;
+  onLanguageTypeChange?: (type: LanguageType) => void;
 }
 
 export const BlockVisualizer: React.FC<BlockVisualizerProps> = ({
@@ -22,8 +24,10 @@ export const BlockVisualizer: React.FC<BlockVisualizerProps> = ({
   onFormulaModeChange,
   notationMode = 'uvxyz',
   onNotationModeChange,
+  languageType = 'anbnan',
+  onLanguageTypeChange,
 }) => {
-  const { totalLength, blockSize, formulaLatex, formulaText } = buildStringP1(p, formulaMode);
+  const { totalLength, blockSize, formulaLatex, formulaText } = buildStringP1(p, formulaMode, languageType);
 
   // Indices calculation for each decomposition part
   const uStart = 0;
@@ -58,8 +62,9 @@ export const BlockVisualizer: React.FC<BlockVisualizerProps> = ({
   for (let i = 0; i < blockSize; i++) {
     charArray.push({ char: 'b', index: blockSize + i, block: 2 });
   }
+  const thirdChar = languageType === 'anbncn' ? 'c' : 'a';
   for (let i = 0; i < blockSize; i++) {
-    charArray.push({ char: 'a', index: 2 * blockSize + i, block: 3 });
+    charArray.push({ char: thirdChar, index: 2 * blockSize + i, block: 3 });
   }
 
   // Symbol mapping based on notation mode:
@@ -106,6 +111,37 @@ export const BlockVisualizer: React.FC<BlockVisualizerProps> = ({
 
         {/* P Controls & Toggles */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Language Toggle */}
+          {onLanguageTypeChange && (
+            <div className="flex items-center bg-slate-950 px-2 py-1 rounded-xl border border-slate-800 space-x-1">
+              <span className="text-[11px] font-semibold text-slate-400 mr-1">
+                Lang:
+              </span>
+              <button
+                onClick={() => onLanguageTypeChange('anbnan')}
+                className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold transition ${
+                  languageType === 'anbnan'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Class Notes Problem: L = { a^n b^n a^n | n >= 1 }"
+              >
+                aⁿbⁿaⁿ
+              </button>
+              <button
+                onClick={() => onLanguageTypeChange('anbncn')}
+                className={`px-2 py-1 rounded-lg text-xs font-mono font-semibold transition ${
+                  languageType === 'anbncn'
+                    ? 'bg-indigo-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Textbook Problem: L = { a^n b^n c^n | n >= 1 }"
+              >
+                aⁿbⁿcⁿ
+              </button>
+            </div>
+          )}
+
           {/* Formula Mode Toggle */}
           {onFormulaModeChange && (
             <div className="flex items-center bg-slate-950 px-2 py-1 rounded-xl border border-slate-800 space-x-1">

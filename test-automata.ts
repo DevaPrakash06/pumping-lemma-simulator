@@ -5,6 +5,7 @@ import {
   pumpString,
   checkMembershipP1,
   getStandardCasesP1,
+  computeRuns,
 } from './src/math/cflProblem1';
 import { interpretProblem2 } from './src/math/problemParser';
 
@@ -180,6 +181,49 @@ const p2PresetAnBnCn = interpretProblem2({
 assert(p2PresetAnBnCn.status === 'ready', 'Problem 2 successfully parses a^n b^n c^n');
 assert(p2PresetAnBnCn.proofGoal === 'not-cfl', 'Detected goal is not-cfl');
 assert(p2PresetAnBnCn.decompositionModel === 'cfl', 'Uses CFL decomposition uvwxy');
+
+// 9. Run-Length Encoding & Photo Verification Tests
+assert(computeRuns('aaaaaaaaaaabbbbbbbbbbbaaaaaaa') === 'a11 b11 a7', 'computeRuns correctly computes a11 b11 a7');
+assert(computeRuns('aaaaaaaaaaaaaaabbbbbbbcccccccc') === 'a15 b7 c8' || computeRuns('aaaaaaaaaaaaaaabbbbbbbccccccc') === 'a15 b7 c7', 'computeRuns correctly computes runs for c');
+
+// Exactly reproduces the user's uploaded photo:
+// p = 5, notebook formula, anbncn, Case 1 (window in Block 1), i = 3
+const sPhoto = buildStringP1(5, 'notebook', 'anbncn');
+assert(sPhoto.s === 'aaaaaaabbbbbbbccccccc', 's for anbncn notebook p=5 has 7 a, 7 b, 7 c (aaaaaaabbbbbbbccccccc)');
+const casesPhoto = getStandardCasesP1(5, 'notebook', 'uvxyz', 'anbncn');
+const case1Photo = casesPhoto[0];
+const decompPhoto = sliceDecomposition(
+  sPhoto.s,
+  case1Photo.sampleDecomp.uLen,
+  case1Photo.sampleDecomp.vLen,
+  case1Photo.sampleDecomp.wLen,
+  case1Photo.sampleDecomp.xLen,
+  case1Photo.sampleDecomp.yLen
+);
+const pumpedPhoto = pumpString(decompPhoto, 3);
+const memPhoto = checkMembershipP1(pumpedPhoto.pumpedString, 'anbncn');
+assert(pumpedPhoto.pumpedString.length === 29, 'Photo Case 1 with i=3 has total length 29');
+assert(memPhoto.runsText === 'a15 b7 c7', 'Photo Case 1 with i=3 produces exact runs: a15 b7 c7');
+assert(memPhoto.isValid === false, 'Photo Case 1 with i=3 is correctly defeated (Not in L)');
+
+// Class Notes Step 6 & 7:
+// p = 5, notebook formula, anbnan, Case 2 (window straddles Block 1 & 2), i = 3
+const sNotes9 = buildStringP1(5, 'notebook', 'anbnan');
+const casesNotes9 = getStandardCasesP1(5, 'notebook', 'uvxyz', 'anbnan');
+const case2Notes9 = casesNotes9[1];
+const decompNotes9 = sliceDecomposition(
+  sNotes9.s,
+  case2Notes9.sampleDecomp.uLen,
+  case2Notes9.sampleDecomp.vLen,
+  case2Notes9.sampleDecomp.wLen,
+  case2Notes9.sampleDecomp.xLen,
+  case2Notes9.sampleDecomp.yLen
+);
+const pumpedNotes9 = pumpString(decompNotes9, 3);
+const memNotes9 = checkMembershipP1(pumpedNotes9.pumpedString, 'anbnan');
+assert(pumpedNotes9.pumpedString.length === 29, 'Class Notes Case 2 with i=3 has total length 29');
+assert(memNotes9.runsText === 'a11 b11 a7', 'Class Notes Case 2 with i=3 produces exact runs: a11 b11 a7');
+assert(memNotes9.isValid === false, 'Class Notes Case 2 with i=3 is correctly defeated (Not in L)');
 
 console.log(`\n======================================================`);
 console.log(`🎉 TEST SUMMARY: ${passed} / ${total} TESTS PASSED!`);

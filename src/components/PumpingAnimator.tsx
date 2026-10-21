@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { MathView } from './MathView';
-import type { DecompositionCFL, FormulaMode, NotationMode } from '../types/automata';
+import type { DecompositionCFL, FormulaMode, LanguageType, NotationMode } from '../types/automata';
 import { pumpString, checkMembershipP1 } from '../math/cflProblem1';
 
 interface PumpingAnimatorProps {
@@ -24,6 +24,7 @@ interface PumpingAnimatorProps {
   onIChange: (newI: number) => void;
   notationMode?: NotationMode;
   formulaMode?: FormulaMode;
+  languageType?: LanguageType;
 }
 
 export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
@@ -33,10 +34,11 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
   onIChange,
   notationMode = 'uvxyz',
   formulaMode = 'notebook',
+  languageType = 'anbnan',
 }) => {
   const [copied, setCopied] = useState(false);
   const pumped = pumpString(decomp, i);
-  const membership = checkMembershipP1(pumped.pumpedString);
+  const membership = checkMembershipP1(pumped.pumpedString, languageType);
 
   // Notation labels
   const isUVXYZ = notationMode === 'uvxyz';
@@ -48,6 +50,76 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
   const pumpedLatex = isUVXYZ
     ? `s_{${i}} = u v^{${i}} x y^{${i}} z`
     : `s_{${i}} = u v^{${i}} w x^{${i}} y`;
+
+  // Build individual character tiles matching the user's reference photo
+  interface TileItem {
+    id: string;
+    char: string;
+    part: 'u' | 'v' | 'w' | 'x' | 'y';
+    partLabel: string;
+    colorClasses: string;
+  }
+
+  const charTiles: TileItem[] = [];
+
+  // u (gray in photo)
+  pumped.u.split('').forEach((c, idx) => {
+    charTiles.push({
+      id: `u-${idx}`,
+      char: c,
+      part: 'u',
+      partLabel: 'u',
+      colorClasses: 'bg-slate-800/80 border-slate-600 text-slate-200',
+    });
+  });
+
+  // v^i (orange/amber in photo)
+  if (i > 0) {
+    pumped.pumpedV.split('').forEach((c, idx) => {
+      charTiles.push({
+        id: `v-${idx}`,
+        char: c,
+        part: 'v',
+        partLabel: `v^${i}`,
+        colorClasses: 'bg-amber-950/70 border-amber-500/80 text-amber-200 font-bold',
+      });
+    });
+  }
+
+  // w in uvwxy / x in uvxyz (blue/sky in photo)
+  pumped.w.split('').forEach((c, idx) => {
+    charTiles.push({
+      id: `w-${idx}`,
+      char: c,
+      part: 'w',
+      partLabel: midSymbol,
+      colorClasses: 'bg-sky-950/70 border-sky-500/80 text-sky-200',
+    });
+  });
+
+  // x in uvwxy / y in uvxyz (purple/magenta in photo)
+  if (i > 0) {
+    pumped.pumpedX.split('').forEach((c, idx) => {
+      charTiles.push({
+        id: `x-${idx}`,
+        char: c,
+        part: 'x',
+        partLabel: `${pmp2Symbol}^${i}`,
+        colorClasses: 'bg-purple-950/70 border-purple-500/80 text-purple-200 font-bold',
+      });
+    });
+  }
+
+  // y in uvwxy / z in uvxyz (emerald/green in photo)
+  pumped.y.split('').forEach((c, idx) => {
+    charTiles.push({
+      id: `y-${idx}`,
+      char: c,
+      part: 'y',
+      partLabel: suffSymbol,
+      colorClasses: 'bg-emerald-950/70 border-emerald-500/80 text-emerald-200',
+    });
+  });
 
   // Trigger celebration when contradiction is proven (i != 1 and membership is false)
   useEffect(() => {
@@ -67,14 +139,16 @@ export const PumpingAnimator: React.FC<PumpingAnimatorProps> = ({
   }, [i, membership.isValid]);
 
   const handleCopyFinalAnswer = () => {
+    const thirdSym = languageType === 'anbncn' ? 'c' : 'a';
+    const langFormula = languageType === 'anbncn' ? '{ a^n b^n c^n | n >= 1 }' : '{ a^n b^n a^n | n >= 1 }';
     const formulaStr = formulaMode === 'notebook'
-      ? `s = a^p a a b^p b b a^p a a (where n = p + 2)`
-      : `s = a^p b^p a^p (where n = p)`;
+      ? `s = a^p a a b^p b b ${thirdSym}^p ${thirdSym} ${thirdSym} (where n = p + 2)`
+      : `s = a^p b^p ${thirdSym}^p (where n = p)`;
     const blockN = formulaMode === 'notebook' ? p + 2 : p;
 
     const textToCopy = `FINAL ANSWER & PROOF SUMMARY
 ================================================================================
-Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
+Problem: Prove that L = ${langFormula} is not context-free.
 
 1. Assumption:
    Assume for contradiction that L is context-free.
@@ -83,7 +157,7 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
 2. Selected String s:
    Using formula ${formulaStr}.
    For p = ${p}:
-   s = a^${blockN} b^${blockN} a^${blockN} = ${'a'.repeat(blockN)}${'b'.repeat(blockN)}${'a'.repeat(blockN)} (|s| = ${3 * blockN})
+   s = a^${blockN} b^${blockN} ${thirdSym}^${blockN} = ${'a'.repeat(blockN)}${'b'.repeat(blockN)}${thirdSym.repeat(blockN)} (|s| = ${3 * blockN})
 
 3. Decomposition (${isUVXYZ ? 's = uvxyz' : 's = uvwxy'}):
    - ${isUVXYZ ? '|vxy|' : '|vwx|'} <= ${p}
@@ -91,16 +165,16 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
    - For all i >= 0, ${isUVXYZ ? 'u v^i x y^i z' : 'u v^i w x^i y'} must belong to L.
 
 4. Pumping with i = ${i}:
-   s_${i} = ${pumped.pumpedString} (Length: ${pumped.pumpedString.length})
+   s_${i} = ${pumped.pumpedString} (Length: ${pumped.pumpedString.length}, Runs: ${membership.runsText})
    Counts:
    - 1st Block a's = ${membership.a1Count}
    - Middle Block b's = ${membership.bCount}
-   - 2nd Block a's = ${membership.a2Count}
+   - 3rd Block ${thirdSym}'s = ${membership.a2Count}
    Equality Check: ${membership.a1Count} = ${membership.bCount} = ${membership.a2Count} --> ${membership.equalCounts ? 'EQUAL' : 'NOT EQUAL (Contradiction!)'}
 
 5. Final Conclusion:
    Since s_${i} does not belong to L, the Pumping Lemma condition is violated.
-   Therefore, L = { a^n b^n a^n | n >= 1 } is NOT a Context-Free Language (L ∉ CFL). [Q.E.D.]
+   Therefore, L = ${langFormula} is NOT a Context-Free Language (L ∉ CFL). [Q.E.D.]
 ================================================================================`;
 
     navigator.clipboard.writeText(textToCopy).then(() => {
@@ -243,59 +317,76 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 font-mono text-sm sm:text-base bg-slate-900 p-3 rounded-lg border border-indigo-900/40 overflow-x-auto min-h-[44px]">
-            {/* Part 1: u */}
-            {pumped.u && (
-              <span className="text-sky-300 bg-sky-950/40 px-1.5 py-0.5 rounded" title={`u: "${pumped.u}"`}>
-                {pumped.u}
-              </span>
-            )}
+          {/* Character Tiles Grid matching the user's uploaded photo */}
+          <div className="bg-slate-950 p-3.5 rounded-xl border border-indigo-900/40 space-y-3">
+            <div className="flex flex-wrap items-center gap-1.5 min-h-[44px]">
+              {charTiles.map((tile) => (
+                <div
+                  key={tile.id}
+                  title={`${tile.partLabel}: "${tile.char}"`}
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-mono font-bold text-xs sm:text-sm border shadow-sm transition transform hover:scale-110 ${tile.colorClasses}`}
+                >
+                  {tile.char}
+                </div>
+              ))}
+            </div>
 
-            {/* Part 2: v^i */}
-            {i > 0 && pumped.pumpedV && (
-              <span
-                className="text-emerald-300 bg-emerald-950/70 px-1.5 py-0.5 rounded border-2 border-emerald-400 glow-active font-bold"
-                title={`v^${i}: "${pumped.pumpedV}" (${i} copies of v)`}
+            {/* Run summary line matching photo: "length 29. Runs: a15 b7 c7" / "length 29. Runs: a11 b11 a7" */}
+            <div className="font-mono text-xs sm:text-sm text-slate-300 font-semibold px-0.5">
+              length {pumped.pumpedString.length}. Runs: {membership.runsText}
+            </div>
+
+            {/* Exact two cards from user's photo */}
+            <div className="space-y-2 pt-1">
+              <div
+                className={`p-3 rounded-xl border text-xs sm:text-sm font-medium shadow-md flex items-center justify-between ${
+                  membership.isValid
+                    ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-200'
+                    : 'bg-[#2b1216] border-rose-800/60 text-rose-200'
+                }`}
               >
-                {pumped.pumpedV}
-                <sub className="text-[10px] text-emerald-200 ml-0.5">({i}×v)</sub>
-              </span>
-            )}
-            {i === 0 && decomp.vLen > 0 && (
-              <span className="text-xs line-through text-slate-500 px-1" title="v deleted by i=0">
-                [v deleted]
-              </span>
-            )}
+                <span>
+                  {membership.isValid ? (
+                    <span className="text-emerald-300 font-semibold">
+                      In L. This split satisfies conditions at i = {i}.
+                    </span>
+                  ) : (
+                    <span className="text-rose-200 font-semibold">
+                      Not in L. This split is defeated at i = {i}.
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                    membership.isValid
+                      ? 'bg-emerald-900/40 border-emerald-700/50 text-emerald-300'
+                      : 'bg-rose-900/40 border-rose-700/50 text-rose-300'
+                  }`}
+                >
+                  {membership.isValid ? 'Valid' : 'Defeated'}
+                </span>
+              </div>
 
-            {/* Part 3: middle buffer (w in uvwxy, x in uvxyz) */}
-            {pumped.w && (
-              <span className="text-amber-300 bg-amber-950/40 px-1.5 py-0.5 rounded" title={`${midSymbol}: "${pumped.w}"`}>
-                {pumped.w}
-              </span>
-            )}
-
-            {/* Part 4: pumped 2 (x in uvwxy, y in uvxyz) */}
-            {i > 0 && pumped.pumpedX && (
-              <span
-                className="text-rose-300 bg-rose-950/70 px-1.5 py-0.5 rounded border-2 border-rose-400 glow-active font-bold"
-                title={`${pmp2Symbol}^${i}: "${pumped.pumpedX}" (${i} copies of ${pmp2Symbol})`}
+              <div
+                className={`p-3 rounded-xl border text-xs sm:text-sm leading-relaxed shadow-md ${
+                  membership.isValid
+                    ? 'bg-emerald-950/30 border-emerald-700/50 text-emerald-100'
+                    : 'bg-[#240e12] border-rose-700/60 text-rose-100'
+                }`}
               >
-                {pumped.pumpedX}
-                <sub className="text-[10px] text-rose-200 ml-0.5">({i}×${pmp2Symbol})</sub>
-              </span>
-            )}
-            {i === 0 && decomp.xLen > 0 && (
-              <span className="text-xs line-through text-slate-500 px-1" title={`${pmp2Symbol} deleted by i=0`}>
-                [{pmp2Symbol} deleted]
-              </span>
-            )}
-
-            {/* Part 5: suffix (y in uvwxy, z in uvxyz) */}
-            {pumped.y && (
-              <span className="text-purple-300 bg-purple-950/40 px-1.5 py-0.5 rounded" title={`${suffSymbol}: "${pumped.y}"`}>
-                {pumped.y}
-              </span>
-            )}
+                {membership.isValid ? (
+                  <span>
+                    <strong className="text-emerald-400 font-bold">Observation:</strong>{' '}
+                    <span className="font-mono">{isUVXYZ ? `u v^{${i}} x y^{${i}} z` : `u v^{${i}} w x^{${i}} y`} ∈ L</span> at i = {i}. Try i = 0 or i = 3 to see where it breaks.
+                  </span>
+                ) : (
+                  <span>
+                    <strong className="text-rose-200 font-bold">Conclusion:</strong>{' '}
+                    <span className="font-mono">{isUVXYZ ? `uv^${i}xy^${i}z` : `uv^${i}wx^${i}y`} ∉ L</span>, which contradicts the pumping lemma. Hence L is not context-free.
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -317,7 +408,7 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
             )}
             <span className="font-bold text-sm sm:text-base">
               Language Membership: <MathView math={`s_{${i}}`} /> {membership.isValid ? '∈' : '∉'}{' '}
-              <MathView math="L = \{ a^n b^n a^n \mid n \ge 1 \}" />
+              <MathView math={`L = \\{ a^n b^n ${membership.thirdSymbol}^n \\mid n \\ge 1 \\}`} />
             </span>
           </div>
 
@@ -351,7 +442,7 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
           </div>
 
           <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-center">
-            <span className="text-slate-400 block text-[11px]">2nd Block a's</span>
+            <span className="text-slate-400 block text-[11px]">{membership.thirdSymbol === 'c' ? "3rd Block c's" : "2nd Block a's"}</span>
             <span className="font-mono text-base font-bold text-indigo-300">
               {membership.a2Count}
             </span>
@@ -411,7 +502,7 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
               <span>Total Length: <strong className="text-white font-mono">{pumped.pumpedString.length}</strong> chars</span>
               <span>• Block 1: <strong className="text-cyan-300 font-mono">{membership.a1Count} a's</strong></span>
               <span>• Block 2: <strong className="text-purple-300 font-mono">{membership.bCount} b's</strong></span>
-              <span>• Block 3: <strong className="text-indigo-300 font-mono">{membership.a2Count} a's</strong></span>
+              <span>• Block 3: <strong className="text-indigo-300 font-mono">{membership.a2Count} {membership.thirdSymbol}'s</strong></span>
             </div>
           </div>
 
@@ -424,11 +515,11 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
             <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 font-mono text-center text-xs sm:text-sm">
               {membership.equalCounts ? (
                 <span className="text-emerald-400 font-bold">
-                  Count(a¹) = {membership.a1Count} &nbsp;=&nbsp; Count(b) = {membership.bCount} &nbsp;=&nbsp; Count(a²) = {membership.a2Count}
+                  Count(a¹) = {membership.a1Count} &nbsp;=&nbsp; Count(b) = {membership.bCount} &nbsp;=&nbsp; Count({membership.thirdSymbol === 'c' ? 'c' : 'a²'}) = {membership.a2Count}
                 </span>
               ) : (
                 <span className="text-rose-400 font-bold">
-                  Count(a¹) = {membership.a1Count} &nbsp;vs&nbsp; Count(b) = {membership.bCount} &nbsp;vs&nbsp; Count(a²) = {membership.a2Count} &nbsp;⟹&nbsp; {membership.a1Count} ≠ {membership.a2Count} (UNEQUAL!)
+                  Count(a¹) = {membership.a1Count} &nbsp;vs&nbsp; Count(b) = {membership.bCount} &nbsp;vs&nbsp; Count({membership.thirdSymbol === 'c' ? 'c' : 'a²'}) = {membership.a2Count} &nbsp;⟹&nbsp; {membership.a1Count} ≠ {membership.a2Count} (UNEQUAL!)
                 </span>
               )}
             </div>
@@ -449,7 +540,7 @@ Problem: Prove that L = { a^n b^n a^n | n >= 1 } is not context-free.
             </p>
             <div className="p-3 rounded-lg bg-slate-950/90 border border-emerald-500/50 text-center space-y-1">
               <div className="text-sm sm:text-base font-bold text-white tracking-wide">
-                FINAL ANSWER: <span className="text-emerald-400 font-mono">L = &#123; aⁿ bⁿ aⁿ | n ≥ 1 &#125; is NOT a Context-Free Language (L ∉ CFL).</span>
+                FINAL ANSWER: <span className="text-emerald-400 font-mono">L = &#123; aⁿ bⁿ {membership.thirdSymbol}ⁿ | n ≥ 1 &#125; is NOT a Context-Free Language (L ∉ CFL).</span>
               </div>
               <span className="inline-block font-mono text-xs text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50">
                 ∎ Q.E.D. Proof by Contradiction Complete

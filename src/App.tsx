@@ -17,7 +17,7 @@ import {
   getStandardCasesP1,
   P1_STEPS,
 } from './math/cflProblem1';
-import type { FormulaMode, NotationMode, ProofCaseCFL } from './types/automata';
+import type { FormulaMode, LanguageType, NotationMode, ProofCaseCFL } from './types/automata';
 
 export const App: React.FC = () => {
   // Navigation tabs
@@ -31,6 +31,7 @@ export const App: React.FC = () => {
   const [isPresentationViewP1, setIsPresentationViewP1] = useState(false);
 
   // Problem 1 State (Notebook defaults from handwritten class notes: P = 5, i = 3, Case 2)
+  const [languageType, setLanguageType] = useState<LanguageType>('anbnan');
   const [formulaMode, setFormulaMode] = useState<FormulaMode>('notebook');
   const [notationMode, setNotationMode] = useState<NotationMode>('uvxyz');
   const [currentStep, setCurrentStep] = useState(1);
@@ -46,19 +47,19 @@ export const App: React.FC = () => {
   const [xLen, setXLen] = useState(2);
   const [yLen, setYLen] = useState(11);
 
-  // Sync decomposition when p, formulaMode, or notationMode changes
+  // Sync decomposition when p, formulaMode, notationMode, or languageType changes
   useEffect(() => {
-    const cases = getStandardCasesP1(p, formulaMode, notationMode);
+    const cases = getStandardCasesP1(p, formulaMode, notationMode, languageType);
     const matched = cases.find((c) => c.id === selectedCaseId) || cases[1] || cases[0];
     setULen(matched.sampleDecomp.uLen);
     setVLen(matched.sampleDecomp.vLen);
     setWLen(matched.sampleDecomp.wLen);
     setXLen(matched.sampleDecomp.xLen);
     setYLen(matched.sampleDecomp.yLen);
-  }, [p, formulaMode, notationMode]);
+  }, [p, formulaMode, notationMode, languageType]);
 
   // Build string and slice
-  const { s, formulaText, totalLength, blockSize } = buildStringP1(p, formulaMode);
+  const { s, formulaText, totalLength, blockSize } = buildStringP1(p, formulaMode, languageType);
   const decomp = sliceDecomposition(s, uLen, vLen, wLen, xLen, yLen);
 
   // Auto-play timer for presentation mode
@@ -224,6 +225,8 @@ export const App: React.FC = () => {
                   onFormulaModeChange={setFormulaMode}
                   notationMode={notationMode}
                   onNotationModeChange={setNotationMode}
+                  languageType={languageType}
+                  onLanguageTypeChange={setLanguageType}
                 />
 
                 {/* Decomposition Bar & Token Length Sliders */}
@@ -245,6 +248,7 @@ export const App: React.FC = () => {
                   onIChange={setI}
                   notationMode={notationMode}
                   formulaMode={formulaMode}
+                  languageType={languageType}
                 />
               </div>
 
@@ -255,6 +259,9 @@ export const App: React.FC = () => {
                   p={p}
                   selectedCaseId={selectedCaseId}
                   onSelectCase={handleSelectCase}
+                  formulaMode={formulaMode}
+                  notationMode={notationMode}
+                  languageType={languageType}
                 />
 
                 {/* Quantifier Matrix / Adversary Game Theory */}

@@ -1,5 +1,6 @@
 export type FormulaMode = 'notebook' | 'standard';
 export type NotationMode = 'uvxyz' | 'uvwxy';
+export type LanguageType = 'anbnan' | 'anbncn';
 
 export type DecompositionCFL = {
   u: string;
@@ -38,10 +39,12 @@ export type MembershipResult = {
   a1Count: number;
   bCount: number;
   a2Count: number;
+  thirdSymbol: 'a' | 'c';
   structuralOrderValid: boolean;
   equalCounts: boolean;
   totalLength: number;
   breakdown: string;
+  runsText: string;
 };
 
 // ==========================================

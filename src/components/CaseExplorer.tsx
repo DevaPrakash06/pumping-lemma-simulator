@@ -8,21 +8,27 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { MathView } from './MathView';
-import type { ProofCaseCFL } from '../types/automata';
+import type { FormulaMode, LanguageType, NotationMode, ProofCaseCFL } from '../types/automata';
 import { getStandardCasesP1 } from '../math/cflProblem1';
 
 interface CaseExplorerProps {
   p: number;
   selectedCaseId: string | null;
   onSelectCase: (c: ProofCaseCFL) => void;
+  formulaMode?: FormulaMode;
+  notationMode?: NotationMode;
+  languageType?: LanguageType;
 }
 
 export const CaseExplorer: React.FC<CaseExplorerProps> = ({
   p,
   selectedCaseId,
   onSelectCase,
+  formulaMode = 'notebook',
+  notationMode = 'uvxyz',
+  languageType = 'anbnan',
 }) => {
-  const cases = getStandardCasesP1(p);
+  const cases = getStandardCasesP1(p, formulaMode, notationMode, languageType);
   const [testedCases, setTestedCases] = useState<Record<string, boolean>>({});
 
   const handleApply = (c: ProofCaseCFL) => {

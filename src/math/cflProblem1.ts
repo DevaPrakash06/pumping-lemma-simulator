@@ -1,19 +1,38 @@
 import type {
   DecompositionCFL,
   FormulaMode,
+  LanguageType,
   MembershipResult,
   NotationMode,
   ProofCaseCFL,
 } from '../types/automata';
 
 /**
+ * Computes run-length encoding (e.g. 'a15 b7 c7' or 'a11 b11 a7')
+ */
+export function computeRuns(str: string): string {
+  if (!str) return 'empty';
+  const runs: { char: string; count: number }[] = [];
+  for (const c of str) {
+    if (runs.length > 0 && runs[runs.length - 1].char === c) {
+      runs[runs.length - 1].count++;
+    } else {
+      runs.push({ char: c, count: 1 });
+    }
+  }
+  return runs.map(r => `${r.char}${r.count}`).join(' ');
+}
+
+/**
  * Builds the base string for Problem 1:
  * - 'notebook': s = a^p a a b^p b b a^p a a (i.e. a^{p+2} b^{p+2} a^{p+2}; let p=5 gives 7 a's, 7 b's, 7 a's; |s| = 21)
  * - 'standard': s = a^p b^p a^p (for p=5 gives 5 a's, 5 b's, 5 a's; |s| = 15)
+ * Also supports languageType: 'anbnan' or 'anbncn'
  */
 export function buildStringP1(
   p: number,
-  formulaMode: FormulaMode = 'notebook'
+  formulaMode: FormulaMode = 'notebook',
+  languageType: LanguageType = 'anbnan'
 ): {
   s: string;
   block1: string;
@@ -22,6 +41,7 @@ export function buildStringP1(
   totalLength: number;
   blockSize: number;
   formulaMode: FormulaMode;
+  languageType: LanguageType;
   formulaLatex: string;
   formulaText: string;
 } {
@@ -29,8 +49,11 @@ export function buildStringP1(
   const blockSize = formulaMode === 'notebook' ? safeP + 2 : safeP;
   const block1 = 'a'.repeat(blockSize);
   const block2 = 'b'.repeat(blockSize);
-  const block3 = 'a'.repeat(blockSize);
+  const thirdChar = languageType === 'anbncn' ? 'c' : 'a';
+  const block3 = thirdChar.repeat(blockSize);
   const s = block1 + block2 + block3;
+
+  const sym = thirdChar;
 
   return {
     s,
@@ -40,14 +63,15 @@ export function buildStringP1(
     totalLength: blockSize * 3,
     blockSize,
     formulaMode,
+    languageType,
     formulaLatex:
       formulaMode === 'notebook'
-        ? `s = a^p a a \\, b^p b b \\, a^p a a = a^{${safeP}+2} b^{${safeP}+2} a^{${safeP}+2} = a^{${blockSize}} b^{${blockSize}} a^{${blockSize}}`
-        : `s = a^p b^p a^p = a^{${safeP}} b^{${safeP}} a^{${safeP}}`,
+        ? `s = a^p a a \\, b^p b b \\, ${sym}^p ${sym} ${sym} = a^{${safeP}+2} b^{${safeP}+2} ${sym}^{${safeP}+2} = a^{${blockSize}} b^{${blockSize}} ${sym}^{${blockSize}}`
+        : `s = a^p b^p ${sym}^p = a^{${safeP}} b^{${safeP}} ${sym}^{${safeP}}`,
     formulaText:
       formulaMode === 'notebook'
-        ? `s = aᵖ a a bᵖ b b aᵖ a a (n = p + 2 = ${blockSize}, |s| = ${blockSize * 3})`
-        : `s = aᵖ bᵖ aᵖ (n = p = ${safeP}, |s| = ${safeP * 3})`,
+        ? `s = aᵖ a a bᵖ b b ${sym}ᵖ ${sym} ${sym} (n = p + 2 = ${blockSize}, |s| = ${blockSize * 3})`
+        : `s = aᵖ bᵖ ${sym}ᵖ (n = p = ${safeP}, |s| = ${safeP * 3})`,
   };
 }
 
@@ -183,13 +207,18 @@ export function pumpString(decomp: DecompositionCFL, i: number): {
 }
 
 /**
- * Rigorous language membership verifier for L = { a^n b^n a^n | n >= 1 }
+ * Rigorous language membership verifier for L = { a^n b^n a^n | n >= 1 } or L = { a^n b^n c^n | n >= 1 }
  * Checks:
- * 1. String must be in the form a+ b+ a+ (no other characters, correct sequential blocks)
- * 2. Number of first a's = Number of b's = Number of second a's = n, with n >= 1
+ * 1. String must be in the form a+ b+ a+ (or a+ b+ c+)
+ * 2. Number of first block = Number of second block = Number of third block = n, with n >= 1
  */
-export function checkMembershipP1(str: string): MembershipResult {
+export function checkMembershipP1(
+  str: string,
+  languageType: LanguageType = 'anbnan'
+): MembershipResult {
   const totalLength = str.length;
+  const runsText = computeRuns(str);
+  const thirdSymbol: 'a' | 'c' = languageType === 'anbncn' ? 'c' : 'a';
 
   if (totalLength === 0) {
     return {
@@ -198,58 +227,71 @@ export function checkMembershipP1(str: string): MembershipResult {
       a1Count: 0,
       bCount: 0,
       a2Count: 0,
+      thirdSymbol,
       structuralOrderValid: false,
       equalCounts: false,
       totalLength: 0,
       breakdown: 'Empty string',
+      runsText: 'empty',
     };
   }
 
-  // Check if string contains only 'a' and 'b'
-  if (!/^[ab]+$/.test(str)) {
+  // Check valid characters
+  const validCharsRegex = languageType === 'anbncn' ? /^[abc]+$/ : /^[ab]+$/;
+  const alphabetStr = languageType === 'anbncn' ? 'Σ = {a, b, c}' : 'Σ = {a, b}';
+
+  if (!validCharsRegex.test(str)) {
     return {
       isValid: false,
-      reason: 'Contains invalid characters. The alphabet is Σ = {a, b}.',
+      reason: `Contains invalid characters. The alphabet is ${alphabetStr}.`,
       a1Count: 0,
       bCount: 0,
       a2Count: 0,
+      thirdSymbol,
       structuralOrderValid: false,
       equalCounts: false,
       totalLength,
       breakdown: 'Alphabet violation',
+      runsText,
     };
   }
 
-  // Match three consecutive blocks: a+ then b+ then a+
-  const match = str.match(/^(a+)(b+)(a+)$/);
+  // Match three consecutive blocks
+  const pattern = languageType === 'anbncn' ? /^(a+)(b+)(c+)$/ : /^(a+)(b+)(a+)$/;
+  const match = str.match(pattern);
 
   if (!match) {
     const a1 = str.match(/^a+/)?.[0]?.length || 0;
     const remainingAfterA = str.slice(a1);
     const b = remainingAfterA.match(/^b+/)?.[0]?.length || 0;
     const remainingAfterB = remainingAfterA.slice(b);
-    const a2 = remainingAfterB.match(/^a+/)?.[0]?.length || 0;
+    const a2Pattern = languageType === 'anbncn' ? /^c+/ : /^a+/;
+    const a2 = remainingAfterB.match(a2Pattern)?.[0]?.length || 0;
     const extra = remainingAfterB.slice(a2);
 
-    let specificReason = 'The string does not have the structure a⁺b⁺a⁺.';
+    const targetPatternName = languageType === 'anbncn' ? 'a⁺b⁺c⁺' : 'a⁺b⁺a⁺';
+    let specificReason = `The string does not have the structure ${targetPatternName}.`;
     if (extra.length > 0) {
-      specificReason = `Pumping generated symbols out of order (extra "${extra.slice(0, 8)}..."). The string is not of the form a*b*a*.`;
+      specificReason = `Pumping generated symbols out of order (extra "${extra.slice(0, 8)}..."). The string is not of the form ${targetPatternName}.`;
     } else if (b === 0) {
       specificReason = "The middle block of b's is completely missing (zero b's).";
     } else if (a1 === 0 || a2 === 0) {
-      specificReason = "One of the required blocks of a's is missing.";
+      specificReason = `One of the required blocks (${a1 === 0 ? "first a's" : languageType === 'anbncn' ? "c's" : "second a's"}) is missing.`;
     }
 
+    const thirdLabel = languageType === 'anbncn' ? 'c' : 'a²';
     return {
       isValid: false,
       reason: specificReason,
       a1Count: a1,
       bCount: b,
       a2Count: a2,
+      thirdSymbol,
       structuralOrderValid: false,
       equalCounts: false,
       totalLength,
-      breakdown: `a¹: ${a1}, b: ${b}, a²: ${a2}${extra ? `, extra: ${extra}` : ''}`,
+      breakdown: `a¹: ${a1}, b: ${b}, ${thirdLabel}: ${a2}${extra ? `, extra: ${extra}` : ''}`,
+      runsText,
     };
   }
 
@@ -258,31 +300,37 @@ export function checkMembershipP1(str: string): MembershipResult {
   const a2Count = match[3].length;
 
   const equalCounts = a1Count === bCount && bCount === a2Count;
+  const langLabel = languageType === 'anbncn' ? 'aⁿbⁿcⁿ' : 'aⁿbⁿaⁿ';
+  const thirdCharName = languageType === 'anbncn' ? "c's" : "a's";
 
   if (equalCounts) {
     return {
       isValid: true,
-      reason: `Belongs to L! Form aⁿbⁿaⁿ with n = ${a1Count} (all three blocks have exactly ${a1Count} symbols).`,
+      reason: `Belongs to L! Form ${langLabel} with n = ${a1Count} (all three blocks have exactly ${a1Count} symbols).`,
       a1Count,
       bCount,
       a2Count,
+      thirdSymbol,
       structuralOrderValid: true,
       equalCounts: true,
       totalLength,
-      breakdown: `a${a1Count} b${bCount} a${a2Count}`,
+      breakdown: `${languageType === 'anbncn' ? `a${a1Count} b${bCount} c${a2Count}` : `a${a1Count} b${bCount} a${a2Count}`}`,
+      runsText,
     };
   }
 
   return {
     isValid: false,
-    reason: `Counts are unequal! Block 1 has ${a1Count} a's, Block 2 has ${bCount} b's, Block 3 has ${a2Count} a's. For membership in L, all three counts must be strictly equal (n = ${a1Count} ≠ ${bCount} or ≠ ${a2Count}).`,
+    reason: `Counts are unequal! Block 1 has ${a1Count} a's, Block 2 has ${bCount} b's, Block 3 has ${a2Count} ${thirdCharName}. For membership in L, all three counts must be strictly equal (n = ${a1Count} ≠ ${bCount} or ≠ ${a2Count}).`,
     a1Count,
     bCount,
     a2Count,
+    thirdSymbol,
     structuralOrderValid: true,
     equalCounts: false,
     totalLength,
-    breakdown: `a${a1Count} b${bCount} a${a2Count} (Unequal: ${a1Count} vs ${bCount} vs ${a2Count})`,
+    breakdown: `a${a1Count} b${bCount} ${languageType === 'anbncn' ? 'c' : 'a'}${a2Count} (Unequal: ${a1Count} vs ${bCount} vs ${a2Count})`,
+    runsText,
   };
 }
 
@@ -294,7 +342,8 @@ export function checkMembershipP1(str: string): MembershipResult {
 export function getStandardCasesP1(
   p: number,
   formulaMode: FormulaMode = 'notebook',
-  notationMode: NotationMode = 'uvxyz'
+  notationMode: NotationMode = 'uvxyz',
+  languageType: LanguageType = 'anbnan'
 ): ProofCaseCFL[] {
   const safeP = Math.max(1, Math.min(8, Math.floor(p)));
   const k = formulaMode === 'notebook' ? safeP + 2 : safeP;
@@ -303,10 +352,10 @@ export function getStandardCasesP1(
   const pmp = notationMode === 'uvxyz' ? 'vy' : 'vx';
 
   // Sample decompositions tailored for each case
-  // Case 1: Window in Block 1
-  const c1V = formulaMode === 'notebook' ? 2 : 1;
-  const c1W = 0;
-  const c1X = 1;
+  // Case 1: Window in Block 1 (matches user's photo with u=2, v=2, x=1, y=2, z=14 for p=5)
+  const c1V = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
+  const c1W = formulaMode === 'notebook' && safeP >= 5 ? 1 : 0;
+  const c1X = formulaMode === 'notebook' && safeP >= 5 ? 2 : 1;
   const c1U = Math.max(0, k - (c1V + c1W + c1X));
   const c1Y = total - (c1U + c1V + c1W + c1X);
 
@@ -338,9 +387,10 @@ export function getStandardCasesP1(
   const c5U = 2 * k;
   const c5Y = total - (c5U + c5V + c5W + c5X);
 
+  const thirdCharUpper = languageType === 'anbncn' ? 'c' : 'a';
   const block1Desc = formulaMode === 'notebook' ? 'Block 1 (aᵖ a a)' : 'Block 1 (aᵖ)';
   const block2Desc = formulaMode === 'notebook' ? 'Block 2 (bᵖ b b)' : 'Block 2 (bᵖ)';
-  const block3Desc = formulaMode === 'notebook' ? 'Block 3 (aᵖ a a)' : 'Block 3 (aᵖ)';
+  const block3Desc = formulaMode === 'notebook' ? `Block 3 (${thirdCharUpper}ᵖ ${thirdCharUpper} ${thirdCharUpper})` : `Block 3 (${thirdCharUpper}ᵖ)`;
 
   return [
     {
